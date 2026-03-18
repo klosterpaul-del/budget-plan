@@ -400,8 +400,7 @@ tr.rs:hover .del-sec-btn{display:block}
 .s-yellow td:last-child{color:#b8860b}
 
 /* ── Add Panel (toolbar above table) ────────────── */
-.add-panel{display:flex;align-items:center;padding:0 0 10px 0}
-.add-panel-wrap{position:relative;display:inline-block}
+.add-bar{padding:0 0 10px 0}
 .add-main-btn{
   display:inline-flex;align-items:center;gap:6px;
   background:var(--blue);color:#fff;
@@ -413,40 +412,6 @@ tr.rs:hover .del-sec-btn{display:block}
 }
 .add-main-btn:hover{transform:scale(1.04)}
 .add-main-btn:active{transform:scale(.96)}
-.add-dropdown{
-  position:absolute;top:calc(100% + 8px);left:0;
-  background:#fff;border-radius:14px;
-  box-shadow:0 8px 30px rgba(0,0,0,.18);
-  border:1px solid var(--sep-s);
-  overflow:hidden;z-index:200;min-width:230px;
-  opacity:0;transform:translateY(-6px) scale(.97);
-  transition:opacity .15s,transform .15s;
-  pointer-events:none;
-}
-.add-dropdown.open{opacity:1;transform:none;pointer-events:auto}
-.add-dd-item{
-  display:flex;align-items:center;gap:10px;
-  width:100%;padding:11px 14px;
-  background:none;border:none;cursor:pointer;
-  font-family:inherit;text-align:left;
-  transition:background .12s;
-  border-bottom:1px solid var(--sep-s);
-}
-.add-dd-item:last-child{border-bottom:none}
-.add-dd-item:hover{background:var(--bg-2)}
-.add-dd-num{
-  width:22px;height:22px;border-radius:50%;
-  font-size:11px;font-weight:700;color:#fff;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.add-dd-txt b{display:block;font-size:13px;font-weight:600;color:var(--t1);line-height:1.3}
-.add-dd-txt small{font-size:11px;color:var(--t2);font-weight:400}
-
-/* ── Wizard select ── */
-.wz-select{
-  width:100%;padding:10px 12px;background:#f2f2f7;border:1.5px solid #e5e5ea;
-  border-radius:10px;font-family:inherit;font-size:14px;color:#1c1c1e;outline:none;
-}
 
 /* ── Month-Copy Popup (iOS Action Sheet) ────────── */
 .mc-backdrop{
@@ -937,12 +902,34 @@ tr.drag-over-bottom td{border-bottom:2px solid #007AFF!important}
   <!-- TABLE VIEW -->
   <div id="view-table">
     <div class="kpi-strip" id="kpi-strip"></div>
-    <div class="add-panel">
-      <div class="add-panel-wrap">
-        <button class="add-main-btn" id="add-main-btn" onclick="openAddModal()">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-          Hinzufügen
-        </button>
+    <div class="add-bar">
+      <button class="add-main-btn" id="add-main-btn" onclick="openAddPanel()">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Hinzufügen
+      </button>
+    </div>
+    <div id="inline-add-panel" style="display:none;background:#f5f5f7;border-radius:12px;padding:16px;margin-bottom:12px;">
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Sektion</div>
+        <div id="ap-sec-row" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Typ</div>
+        <div style="display:flex;gap:18px">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:14px;color:#1c1c1e;font-weight:500">
+            <input type="radio" name="ap-type" value="grp" id="ap-type-grp"> Kategorie
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:14px;color:#1c1c1e;font-weight:500">
+            <input type="radio" name="ap-type" value="item" id="ap-type-item" checked> Unterkategorie
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="ap-name" placeholder="Name eingeben …"
+          style="flex:1;padding:9px 12px;border:1.5px solid #e5e5ea;border-radius:9px;font-size:14px;font-family:inherit;outline:none;background:#fff"
+          onkeydown="if(event.key==='Enter')addPanelSave();if(event.key==='Escape')closeAddPanel()">
+        <button onclick="addPanelSave()" style="padding:9px 18px;background:#007AFF;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit">Hinzufügen</button>
+        <button onclick="closeAddPanel()" style="padding:9px 10px;background:none;border:none;cursor:pointer;font-size:14px;color:#8e8e93;font-family:inherit">Abbrechen</button>
       </div>
     </div>
     <div class="tw">
@@ -1582,118 +1569,69 @@ function colorToClass(hex) {
 }
 
 // ═══════════════════════════════════════
-// ADD WIZARD
+// ADD INLINE PANEL
 // ═══════════════════════════════════════
 
-var _wzSec = null, _wzType = null;
-
-var WZ_SECS = [
+var _apSec = 'ein';
+var AP_SECS = [
   {id:'ein', label:'Einnahmen', color:'#34C759'},
   {id:'aus', label:'Ausgaben',  color:'#FF3B30'},
   {id:'bud', label:'Budget',    color:'#AF52DE'},
   {id:'spa', label:'Sparen',    color:'#007AFF'},
 ];
 
-function openAddModal() {
-  _wzSec = null; _wzType = null;
-  var old = document.getElementById('wizard-overlay');
-  if (old) old.remove();
-  var ov = document.createElement('div');
-  ov.id = 'wizard-overlay';
-  ov.setAttribute('style', 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;');
-  ov.addEventListener('click', function(e) { if (e.target === ov) closeAddModal(); });
-  var box = document.createElement('div');
-  box.id = 'wizard-box';
-  box.setAttribute('style', 'background:#fff;border-radius:16px;padding:28px 24px 24px;width:min(360px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.2);');
-  box.addEventListener('click', function(e) { e.stopPropagation(); });
-  var content = document.createElement('div');
-  content.id = 'wizard-content';
-  box.appendChild(content);
-  ov.appendChild(box);
-  document.body.appendChild(ov);
-  wzStep1();
+function openAddPanel() {
+  _apSec = 'ein';
+  document.getElementById('inline-add-panel').style.display = 'block';
+  apRenderSecs();
+  document.getElementById('ap-name').value = '';
+  document.getElementById('ap-type-item').checked = true;
+  setTimeout(function() { document.getElementById('ap-name').focus(); }, 30);
 }
 
-function closeAddModal() {
-  var ov = document.getElementById('wizard-overlay');
-  if (ov) ov.remove();
-  document.body.style.overflow = '';
-}
-
-function wzStep1() {
-  var html = '<h3 style="margin:0 0 20px;text-align:center;font-size:17px;font-weight:700;color:#1c1c1e">Zu welcher Sektion?</h3>';
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">';
-  WZ_SECS.forEach(function(s) {
-    html += '<div style="border:2px solid #e5e5ea;border-radius:12px;padding:20px 10px;text-align:center;cursor:pointer;background:#fff" '
-          + 'onclick="wzPickSec(\'' + s.id + '\')">'
-          + '<div style="width:18px;height:18px;border-radius:50%;background:' + s.color + ';margin:0 auto 8px"></div>'
-          + '<div style="font-size:14px;font-weight:600;color:#1c1c1e">' + s.label + '</div>'
-          + '</div>';
+function apRenderSecs() {
+  var row = document.getElementById('ap-sec-row');
+  row.innerHTML = '';
+  AP_SECS.forEach(function(s) {
+    var btn = document.createElement('button');
+    var active = s.id === _apSec;
+    btn.textContent = s.label;
+    btn.onclick = function() { _apSec = s.id; apRenderSecs(); };
+    btn.style.cssText = 'padding:7px 14px;border-radius:20px;border:2px solid '
+      + (active ? s.color : '#e5e5ea') + ';background:'
+      + (active ? s.color : '#fff') + ';color:'
+      + (active ? '#fff' : '#636366')
+      + ';font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+    row.appendChild(btn);
   });
-  html += '</div>';
-  html += '<button onclick="closeAddModal()" style="width:100%;padding:11px;border:1.5px solid #e5e5ea;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#636366">Abbrechen</button>';
-  document.getElementById('wizard-content').innerHTML = html;
 }
 
-function wzPickSec(id) {
-  _wzSec = id;
-  wzStep2();
+function closeAddPanel() {
+  document.getElementById('inline-add-panel').style.display = 'none';
 }
 
-function wzStep2() {
-  var html = '<h3 style="margin:0 0 20px;text-align:center;font-size:17px;font-weight:700;color:#1c1c1e">Was hinzufügen?</h3>';
-  html += '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">';
-  html += '<div onclick="wzPickType(\'grp\')" style="border:2px solid #e5e5ea;border-radius:12px;padding:14px 16px;cursor:pointer;background:#fff">'
-        + '<div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-bottom:3px">Kategorie</div>'
-        + '<div style="font-size:12px;color:#8e8e93">z.B. Versicherung, Kredite, Wohnen</div></div>';
-  html += '<div onclick="wzPickType(\'item\')" style="border:2px solid #e5e5ea;border-radius:12px;padding:14px 16px;cursor:pointer;background:#fff">'
-        + '<div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-bottom:3px">Unterkategorie</div>'
-        + '<div style="font-size:12px;color:#8e8e93">z.B. ING, Rechtsschutz, Wohngebäude</div></div>';
-  html += '</div>';
-  html += '<button onclick="wzStep1()" style="width:100%;padding:11px;border:1.5px solid #e5e5ea;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#636366">← Zurück</button>';
-  document.getElementById('wizard-content').innerHTML = html;
-}
+function addPanelSave() {
+  var name = document.getElementById('ap-name').value.trim();
+  if (!name) { document.getElementById('ap-name').focus(); return; }
 
-function wzPickType(type) {
-  _wzType = type;
-  wzStep3();
-}
+  var typeEl = document.querySelector('input[name="ap-type"]:checked');
+  var typeVal = typeEl ? typeEl.value : 'item';
 
-function wzStep3() {
-  var html = '<h3 style="margin:0 0 20px;text-align:center;font-size:17px;font-weight:700;color:#1c1c1e">Details eingeben</h3>';
-  html += '<div style="margin-bottom:16px">'
-        + '<label style="display:block;font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Name</label>'
-        + '<input type="text" id="wz-name-inp" placeholder="Name eingeben …" '
-        + 'style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e5e5ea;border-radius:10px;font-size:15px;font-family:inherit;outline:none" '
-        + 'onkeydown="if(event.key===\'Enter\')wzSave();if(event.key===\'Escape\')closeAddModal()"></div>';
-  html += '<div style="display:flex;gap:8px">';
-  html += '<button onclick="wzStep2()" style="flex:1;padding:11px;border:1.5px solid #e5e5ea;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#636366">← Zurück</button>';
-  html += '<button onclick="wzSave()" style="flex:2;padding:11px;border:none;border-radius:10px;background:#007AFF;color:#fff;cursor:pointer;font-size:14px;font-family:inherit;font-weight:600">✓ Hinzufügen</button>';
-  html += '</div>';
-  document.getElementById('wizard-content').innerHTML = html;
-  setTimeout(function() { var el = document.getElementById('wz-name-inp'); if (el) el.focus(); }, 60);
-}
-
-function wzSave() {
-  var nameEl = document.getElementById('wz-name-inp');
-  var name = nameEl ? nameEl.value.trim() : '';
-  if (!name) { if (nameEl) nameEl.focus(); return; }
-
-  var sec = appData.find(function(x) { return x.id === _wzSec; });
+  var sec = appData.find(function(x) { return x.id === _apSec; });
   if (!sec) return;
 
-  if (_wzType === 'grp') {
-    sec.groups.push({id: 'grp_' + Date.now(), label: name, color: sec.color, items: []});
-  } else if (_wzType === 'item') {
+  if (typeVal === 'grp') {
+    sec.groups.push({id:'grp_'+Date.now(), label:name, color:sec.color, items:[]});
+  } else {
     var grp = sec.groups.find(function(g) { return g.label; });
     if (!grp) {
-      grp = {id: 'grp_' + Date.now(), label: sec.label, color: sec.color, items: []};
+      grp = {id:'grp_'+Date.now(), label:sec.label, color:sec.color, items:[]};
       sec.groups.push(grp);
     }
-    grp.items.push({id: 'item_' + Date.now(), name: name, v: new Array(12).fill(0)});
+    grp.items.push({id:'item_'+Date.now(), name:name, v:new Array(12).fill(0)});
   }
 
-  closeAddModal();
+  closeAddPanel();
   saveData();
   renderTable();
 }
@@ -2730,7 +2668,6 @@ auth.onAuthStateChanged(async user => {
   }
 });
 </script>
-<!-- wizard-overlay created dynamically in openAddModal() -->
 <!-- ── Home: New Book Modal ── -->
 <div id="home-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:28px 24px 24px;width:min(380px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.18);" onclick="event.stopPropagation()">
