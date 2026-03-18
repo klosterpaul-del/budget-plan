@@ -1936,48 +1936,30 @@ function doCreateBook() {
   btn.disabled = true;
   btn.textContent = 'Wird erstellt…';
 
-  var db   = firebase.database();
+  if (_hmMode === 'copy') {
+    var sourceId = document.getElementById('copy-source-select').value;
+    if (!sourceId) {
+      errEl.textContent = 'Bitte ein Quellbuch auswählen.';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Erstellen'; _isSaving = false;
+      return;
+    }
+    copyBook(sourceId, name, btn, errEl);
+    return;
+  }
+
+  var db = firebase.database();
   var newId = 'book_' + Date.now();
   var lastEdited = new Date().toISOString();
 
-  var dataPromise;
-  if (_hmMode === 'copy') {
-    var sourceId = document.getElementById('copy-source-select').value;
-    dataPromise = db.ref('users/' + user.uid + '/books/' + sourceId).once('value')
-      .then(function(snap) {
-        var raw = snap.val();
-        var bookData = raw ? JSON.parse(JSON.stringify(raw)) : {_v: DATA_VER, checks: {}, data: {}};
-        // Re-generate group/item IDs to avoid collisions
-        if (bookData.data && typeof bookData.data === 'object') {
-          Object.values(bookData.data).forEach(function(sec) {
-            if (!sec.groups) return;
-            Object.values(sec.groups).forEach(function(grp) {
-              var gid = 'grp_' + Math.random().toString(36).slice(2);
-              grp.id = gid;
-              if (grp.items) Object.values(grp.items).forEach(function(it) {
-                it.id = 'item_' + Math.random().toString(36).slice(2);
-              });
-            });
-          });
-        }
-        bookData.checks = {};
-        return bookData;
-      });
-  } else {
-    dataPromise = Promise.resolve({
-      _v: DATA_VER, checks: {},
-      data: [
-        { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: [] },
-        { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: [] },
-        { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: [] },
-        { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: [] }
-      ]
-    });
-  }
-
-  dataPromise
-  .then(function(bookData) {
-    return db.ref('users/' + user.uid + '/books/' + newId).set(bookData);
+  db.ref('users/' + user.uid + '/books/' + newId).set({
+    _v: DATA_VER, checks: {},
+    data: [
+      { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: [] },
+      { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: [] },
+      { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: [] },
+      { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: [] }
+    ]
   })
   .then(function() {
     return db.ref('users/' + user.uid + '/index/' + newId).set({
@@ -1991,10 +1973,50 @@ function doCreateBook() {
     console.error('doCreateBook error:', e.code, e.message);
     errEl.textContent = 'Fehler: ' + e.message;
     errEl.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Erstellen';
-    _isSaving = false;
+    btn.disabled = false; btn.textContent = 'Erstellen'; _isSaving = false;
   });
+}
+
+async function copyBook(sourceId, name, btn, errEl) {
+  var user = firebase.auth().currentUser;
+  if (!user) return;
+  var db = firebase.database();
+
+  try {
+    // 1. Load source book data from Firebase
+    var sourceSnap = await db.ref('users/' + user.uid + '/books/' + sourceId).once('value');
+    var sourceData = sourceSnap.val();
+    if (!sourceData) {
+      errEl.textContent = 'Quelldaten nicht gefunden.';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Erstellen'; _isSaving = false;
+      return;
+    }
+
+    // 2. Deep copy
+    var copiedData = JSON.parse(JSON.stringify(sourceData));
+
+    // 3. Reset checks only (preserve all sections, groups, items, values)
+    copiedData.checks = {};
+
+    // 4. Save as new book with generated ID
+    var newId = 'book_' + Date.now();
+    var lastEdited = new Date().toISOString();
+    await db.ref('users/' + user.uid + '/books/' + newId).set(copiedData);
+
+    // 5. Write index entry
+    await db.ref('users/' + user.uid + '/index/' + newId).set({
+      id: newId, name: name, lastEdited: lastEdited
+    });
+
+    console.log('Buch kopiert:', name, '← Quelle:', sourceId);
+    closeHomeModal();
+  } catch(e) {
+    console.error('copyBook error:', e.code, e.message);
+    errEl.textContent = 'Fehler beim Kopieren: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Erstellen'; _isSaving = false;
+  }
 }
 
 function saveNewBook() { doCreateBook(); }
