@@ -442,108 +442,11 @@ tr.rs:hover .del-sec-btn{display:block}
 .add-dd-txt b{display:block;font-size:13px;font-weight:600;color:var(--t1);line-height:1.3}
 .add-dd-txt small{font-size:11px;color:var(--t2);font-weight:400}
 
-/* ── Add Wizard (iOS-style bottom sheet) ─────────── */
-.modal-backdrop{
-  position:fixed;inset:0;background:rgba(0,0,0,.4);
-  display:flex;align-items:center;justify-content:center;
-  z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;
+/* ── Wizard select ── */
+.wz-select{
+  width:100%;padding:10px 12px;background:#f2f2f7;border:1.5px solid #e5e5ea;
+  border-radius:10px;font-family:inherit;font-size:14px;color:#1c1c1e;outline:none;
 }
-.modal-backdrop.open{opacity:1;pointer-events:auto}
-.modal-sheet{
-  position:relative;width:90%;max-width:480px;
-  background:#fff;border-radius:16px;
-  box-shadow:0 8px 40px rgba(0,0,0,.15);
-  transform:scale(.95);opacity:0;
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s;
-}
-.modal-sheet.open{transform:scale(1);opacity:1}
-.modal-handle{display:none}
-.modal-inner{padding:24px 24px 28px;overflow:hidden}
-/* select used in wizard */
-.modal-select{
-  width:100%;padding:10px 12px;background:#f2f2f7;border:1.5px solid transparent;
-  border-radius:10px;font-family:inherit;font-size:14px;color:#1c1c1e;
-  outline:none;appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23636366' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 12px center;
-  background-size:12px;padding-right:32px;cursor:pointer;
-  transition:border-color .15s,background .15s;
-}
-.modal-select:focus{background:#fff;border-color:#007AFF}
-/* color picker (shared with month popup) */
-.color-picker{display:flex;gap:8px;flex-wrap:wrap}
-.cp-dot{width:26px;height:26px;border-radius:50%;cursor:pointer;flex-shrink:0;transition:transform .15s,box-shadow .15s}
-.cp-dot:hover{transform:scale(1.15)}
-.cp-dot.active{box-shadow:0 0 0 2px #fff,0 0 0 4px currentColor}
-/* ── Wizard progress dots ── */
-.wz-progress{display:flex;align-items:center;justify-content:center;margin:8px 0 20px}
-.wz-dot{width:8px;height:8px;border-radius:50%;background:#e5e5ea;transition:background .25s}
-.wz-dot.active{background:#007AFF}
-.wz-dot.done{background:rgba(0,122,255,.35)}
-.wz-line{width:32px;height:2px;background:#e5e5ea;transition:background .25s}
-.wz-line.done{background:rgba(0,122,255,.35)}
-/* ── Wizard step transitions ── */
-.wz-step.hidden{display:none}
-@keyframes wz-fwd{from{transform:translateX(28px);opacity:0}to{transform:translateX(0);opacity:1}}
-@keyframes wz-back{from{transform:translateX(-28px);opacity:0}to{transform:translateX(0);opacity:1}}
-.wz-step.anim-fwd{animation:wz-fwd .3s ease forwards}
-.wz-step.anim-back{animation:wz-back .3s ease forwards}
-/* step title */
-.wz-title{font-size:17px;font-weight:700;color:#1c1c1e;text-align:center;margin-bottom:20px;letter-spacing:-.02em}
-/* ── Step 1: section cards ── */
-.wz-sec-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px}
-.wz-sec-card{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:6px;padding:18px 10px;border:2px solid #e5e5ea;border-radius:12px;
-  cursor:pointer;font-size:15px;font-weight:600;color:#1c1c1e;background:#fff;
-  transition:border-color .15s,background .15s;
-}
-.wz-sec-card:hover{background:#f9f9f9}
-.wz-sec-card.selected{border-color:var(--wcard-clr);background:var(--wcard-bg)}
-.wz-sec-icon{font-size:22px}
-/* ── Step 2: type cards ── */
-.wz-type-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:4px}
-.wz-type-card{
-  display:flex;align-items:flex-start;gap:14px;padding:14px 16px;
-  border:2px solid #e5e5ea;border-radius:12px;cursor:pointer;background:#fff;
-  transition:border-color .15s,background .15s;
-}
-.wz-type-card:hover{background:#f9f9f9}
-.wz-type-card.selected{border-color:#007AFF;background:rgba(0,122,255,.06)}
-.wz-type-icon{font-size:22px;line-height:1;padding-top:1px;flex-shrink:0}
-.wz-type-lbl{font-size:15px;font-weight:600;color:#1c1c1e;margin-bottom:3px}
-.wz-type-desc{font-size:12px;color:#8e8e93;line-height:1.4}
-.wz-parent-field{margin-bottom:14px}
-/* shared label style */
-.wz-parent-field label,.wz-name-field label,.wz-color-field label{
-  display:block;font-size:10px;font-weight:600;color:#8e8e93;
-  text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;
-}
-/* ── Step 3: details ── */
-.wz-name-field{margin-bottom:16px}
-.wz-name-input{
-  width:100%;padding:12px 14px;background:#f2f2f7;border:1.5px solid transparent;
-  border-radius:10px;font-family:inherit;font-size:16px;color:#1c1c1e;
-  outline:none;transition:border-color .15s,background .15s;box-sizing:border-box;
-}
-.wz-name-input:focus{background:#fff;border-color:#007AFF}
-.wz-color-field{margin-bottom:8px}
-/* ── Wizard nav buttons ── */
-.wz-nav{display:flex;gap:10px;margin-top:20px}
-.wz-btn-back{
-  padding:12px 18px;background:#f2f2f7;color:#636366;
-  border:none;border-radius:12px;cursor:pointer;
-  font-family:inherit;font-size:14px;font-weight:500;
-  transition:background .15s;flex-shrink:0;
-}
-.wz-btn-back:hover{background:#e5e5ea}
-.wz-btn-next{
-  flex:1;padding:12px;background:#007AFF;color:#fff;
-  border:none;border-radius:12px;cursor:pointer;
-  font-family:inherit;font-size:14px;font-weight:600;transition:opacity .15s;
-}
-.wz-btn-next:hover:not(:disabled){opacity:.88}
-.wz-btn-next:disabled{opacity:.35;cursor:default}
 
 /* ── Month-Copy Popup (iOS Action Sheet) ────────── */
 .mc-backdrop{
@@ -1654,7 +1557,7 @@ function deleteSec(sid, e) {
 
 
 // ═══════════════════════════════════════
-// ADD PANEL / MODAL
+// ADD WIZARD
 // ═══════════════════════════════════════
 const ADD_COLORS = [
   {hex:'#34C759',name:'Grün'},
@@ -1682,133 +1585,112 @@ function colorToClass(hex) {
 // ADD WIZARD
 // ═══════════════════════════════════════
 
-const WZ_SECS = [
-  {id:'ein', label:'Einnahmen', icon:'🟢', clr:'#34C759', rgb:'52,199,89'},
-  {id:'aus', label:'Ausgaben',  icon:'🔴', clr:'#FF3B30', rgb:'255,59,48'},
-  {id:'bud', label:'Budget',    icon:'🟣', clr:'#AF52DE', rgb:'175,82,222'},
-  {id:'spa', label:'Sparen',    icon:'🔵', clr:'#007AFF', rgb:'0,122,255'},
+var _wzSec = null, _wzType = null;
+
+var WZ_SECS = [
+  {id:'ein', label:'Einnahmen', color:'#34C759'},
+  {id:'aus', label:'Ausgaben',  color:'#FF3B30'},
+  {id:'bud', label:'Budget',    color:'#AF52DE'},
+  {id:'spa', label:'Sparen',    color:'#007AFF'},
 ];
 
-let _wStep = 1, _wSec = null, _wType = null, _wColor = ADD_COLORS[0].hex;
-
 function openAddModal() {
-  _wStep = 1; _wSec = null; _wType = null; _wColor = ADD_COLORS[0].hex;
-
-  // Build section cards
-  document.getElementById('wz-sec-grid').innerHTML = WZ_SECS.map(s =>
-    `<div class="wz-sec-card" id="wz-sec-${s.id}"
-      style="--wcard-clr:${s.clr};--wcard-bg:rgba(${s.rgb},.08)"
-      onclick="wzSelectSec('${s.id}')">
-      <span class="wz-sec-icon">${s.icon}</span>
-      <span>${s.label}</span>
-    </div>`
-  ).join('');
-
-  wzShowStep(1, null);
-  wzUpdateProgress(1);
-  document.body.style.overflow = 'hidden';
-  var mb = document.getElementById('modal-backdrop');
-  document.body.appendChild(mb); // ensure topmost DOM position
-  mb.classList.add('open');
-  requestAnimationFrame(() => document.getElementById('modal-sheet').classList.add('open'));
+  _wzSec = null; _wzType = null;
+  var ov = document.getElementById('wizard-overlay');
+  document.body.appendChild(ov);
+  ov.style.display = 'flex';
+  wzStep1();
 }
 
 function closeAddModal() {
-  document.getElementById('modal-backdrop').classList.remove('open');
-  document.getElementById('modal-sheet').classList.remove('open');
+  document.getElementById('wizard-overlay').style.display = 'none';
   document.body.style.overflow = '';
 }
 
-function wzShowStep(n, dir) {
-  [1, 2, 3].forEach(i => {
-    const el = document.getElementById('wz-step-' + i);
-    if (i === n) {
-      el.classList.remove('hidden', 'anim-fwd', 'anim-back');
-      if (dir) requestAnimationFrame(() => el.classList.add(dir === 'fwd' ? 'anim-fwd' : 'anim-back'));
-    } else {
-      el.classList.add('hidden');
-    }
+function wzStep1() {
+  var html = '<h3 style="margin:0 0 20px;text-align:center;font-size:17px;font-weight:700;color:#1c1c1e">Zu welcher Sektion?</h3>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">';
+  WZ_SECS.forEach(function(s) {
+    html += '<div style="border:2px solid #e5e5ea;border-radius:12px;padding:20px 10px;text-align:center;cursor:pointer;background:#fff" '
+          + 'onclick="wzPickSec(\'' + s.id + '\')">'
+          + '<div style="width:18px;height:18px;border-radius:50%;background:' + s.color + ';margin:0 auto 8px"></div>'
+          + '<div style="font-size:14px;font-weight:600;color:#1c1c1e">' + s.label + '</div>'
+          + '</div>';
   });
-  _wStep = n;
+  html += '</div>';
+  html += '<button onclick="closeAddModal()" style="width:100%;padding:11px;border:1.5px solid #e5e5ea;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#636366">Abbrechen</button>';
+  document.getElementById('wizard-content').innerHTML = html;
 }
 
-function wzUpdateProgress(n) {
-  for (let i = 1; i <= 3; i++) {
-    const d = document.getElementById('wz-d' + i);
-    d.className = 'wz-dot' + (i === n ? ' active' : i < n ? ' done' : '');
+function wzPickSec(id) {
+  _wzSec = id;
+  wzStep2();
+}
+
+function wzStep2() {
+  var html = '<h3 style="margin:0 0 20px;text-align:center;font-size:17px;font-weight:700;color:#1c1c1e">Was hinzufügen?</h3>';
+  html += '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">';
+  html += '<div onclick="wzPickType(\'grp\')" style="border:2px solid #e5e5ea;border-radius:12px;padding:14px 16px;cursor:pointer;background:#fff">'
+        + '<div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-bottom:3px">Kategorie</div>'
+        + '<div style="font-size:12px;color:#8e8e93">z.B. Versicherung, Kredite, Wohnen</div></div>';
+  html += '<div onclick="wzPickType(\'item\')" style="border:2px solid #e5e5ea;border-radius:12px;padding:14px 16px;cursor:pointer;background:#fff">'
+        + '<div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-bottom:3px">Unterkategorie</div>'
+        + '<div style="font-size:12px;color:#8e8e93">z.B. ING, Rechtsschutz, Wohngebäude</div></div>';
+  html += '</div>';
+  html += '<button onclick="wzStep1()" style="width:100%;padding:11px;border:1.5px solid #e5e5ea;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#636366">← Zurück</button>';
+  document.getElementById('wizard-content').innerHTML = html;
+}
+
+function wzPickType(type) {
+  _wzType = type;
+  wzStep3();
+}
+
+function wzStep3() {
+  var catHtml = '';
+  if (_wzType === 'item') {
+    var sec = appData.find(function(x) { return x.id === _wzSec; });
+    var groups = sec ? sec.groups.filter(function(g) { return g.label; }) : [];
+    catHtml = groups.length
+      ? groups.map(function(g) { return '<option value="' + g.id + '">' + escHtml(g.label) + '</option>'; }).join('')
+      : '<option value="">— Keine Kategorien —</option>';
   }
-  for (let i = 1; i <= 2; i++) {
-    document.getElementById('wz-l' + i).className = 'wz-line' + (i < n ? ' done' : '');
+
+  var html = '<h3 style="margin:0 0 20px;text-align:center;font-size:17px;font-weight:700;color:#1c1c1e">Details eingeben</h3>';
+  html += '<div style="margin-bottom:12px">'
+        + '<label style="display:block;font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Name</label>'
+        + '<input type="text" id="wz-name-inp" placeholder="Name eingeben …" '
+        + 'style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e5e5ea;border-radius:10px;font-size:15px;font-family:inherit;outline:none" '
+        + 'onkeydown="if(event.key===\'Enter\')wzSave();if(event.key===\'Escape\')closeAddModal()"></div>';
+  if (_wzType === 'item') {
+    html += '<div style="margin-bottom:16px">'
+          + '<label style="display:block;font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Kategorie</label>'
+          + '<select id="wz-cat-sel" class="wz-select">' + catHtml + '</select></div>';
   }
+  html += '<div style="display:flex;gap:8px;margin-top:4px">';
+  html += '<button onclick="wzStep2()" style="flex:1;padding:11px;border:1.5px solid #e5e5ea;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#636366">← Zurück</button>';
+  html += '<button onclick="wzSave()" style="flex:2;padding:11px;border:none;border-radius:10px;background:#007AFF;color:#fff;cursor:pointer;font-size:14px;font-family:inherit;font-weight:600">✓ Hinzufügen</button>';
+  html += '</div>';
+  document.getElementById('wizard-content').innerHTML = html;
+  setTimeout(function() { var el = document.getElementById('wz-name-inp'); if (el) el.focus(); }, 60);
 }
-
-function wzSelectSec(id) {
-  _wSec = id;
-  WZ_SECS.forEach(s => document.getElementById('wz-sec-' + s.id).classList.toggle('selected', s.id === id));
-  setTimeout(() => wzGoStep(2), 150);
-}
-
-function wzSelectType(type) {
-  _wType = type;
-  document.getElementById('wz-card-grp').classList.toggle('selected', type === 'grp');
-  document.getElementById('wz-card-item').classList.toggle('selected', type === 'item');
-  setTimeout(() => wzGoStep(3), 150);
-}
-
-function wzGoStep(n) {
-  if (n === 2 && !_wSec) return;
-  if (n === 3) {
-    if (!_wType) return;
-    _wColor = ADD_COLORS[0].hex;
-    // Parent category dropdown for items
-    const pf = document.getElementById('wz-parent-field');
-    if (_wType === 'item') {
-      pf.classList.remove('hidden');
-      const sec = appData.find(x => x.id === _wSec);
-      const labeled = sec ? sec.groups.filter(g => g.label) : [];
-      document.getElementById('wz-parent-sel').innerHTML = labeled.length
-        ? labeled.map(g => `<option value="${g.id}">${escHtml(g.label)}</option>`).join('')
-        : '<option value="">— Keine Kategorien vorhanden —</option>';
-    } else {
-      pf.classList.add('hidden');
-    }
-    document.getElementById('wz-name').value = '';
-    document.getElementById('wz-next-3').disabled = true;
-    setTimeout(() => document.getElementById('wz-name').focus(), 80);
-  }
-  const dir = n > _wStep ? 'fwd' : 'back';
-  wzShowStep(n, dir);
-  wzUpdateProgress(n);
-}
-
-function wzCheckName() {
-  document.getElementById('wz-next-3').disabled = !document.getElementById('wz-name').value.trim();
-}
-
-function wzRenderColors() {
-  document.getElementById('wz-color-picker').innerHTML = ADD_COLORS.map(c =>
-    `<div class="cp-dot${c.hex === _wColor ? ' active' : ''}" title="${c.name}"
-      style="background:${c.hex};color:${c.hex}" onclick="wzPickColor('${c.hex}')"></div>`
-  ).join('');
-}
-
-function wzPickColor(hex) { _wColor = hex; wzRenderColors(); }
 
 function wzSave() {
-  const name = document.getElementById('wz-name').value.trim();
-  if (!name) { document.getElementById('wz-name').focus(); return; }
+  var nameEl = document.getElementById('wz-name-inp');
+  var name = nameEl ? nameEl.value.trim() : '';
+  if (!name) { if (nameEl) nameEl.focus(); return; }
 
-  if (_wType === 'grp') {
-    const sec = appData.find(x => x.id === _wSec);
-    if (!sec) return;
+  var sec = appData.find(function(x) { return x.id === _wzSec; });
+  if (!sec) return;
+
+  if (_wzType === 'grp') {
     sec.groups.push({id: 'grp_' + Date.now(), label: name, color: sec.color, items: []});
-  } else if (_wType === 'item') {
-    const sec = appData.find(x => x.id === _wSec);
-    if (!sec) return;
-    const gid = document.getElementById('wz-parent-sel').value;
-    const grp = sec.groups.find(g => g.id === gid);
+  } else if (_wzType === 'item') {
+    var catEl = document.getElementById('wz-cat-sel');
+    var gid = catEl ? catEl.value : '';
+    var grp = sec.groups.find(function(g) { return g.id === gid; });
     if (!grp) return;
-    grp.items.push({id: 'item_' + Date.now(), name, v: new Array(12).fill(0)});
+    grp.items.push({id: 'item_' + Date.now(), name: name, v: new Array(12).fill(0)});
   }
 
   closeAddModal();
@@ -2825,73 +2707,11 @@ auth.onAuthStateChanged(async user => {
   }
 });
 </script>
-<!-- ── Add Modal ── -->
-<div class="modal-backdrop" id="modal-backdrop" onclick="closeAddModal()">
-<div class="modal-sheet" id="modal-sheet" onclick="event.stopPropagation()">
-  <div class="modal-handle"></div>
-  <div class="modal-inner">
-    <!-- Progress indicator -->
-    <div class="wz-progress">
-      <div class="wz-dot active" id="wz-d1"></div>
-      <div class="wz-line" id="wz-l1"></div>
-      <div class="wz-dot" id="wz-d2"></div>
-      <div class="wz-line" id="wz-l2"></div>
-      <div class="wz-dot" id="wz-d3"></div>
-    </div>
-
-    <!-- Step 1: Choose section -->
-    <div class="wz-step" id="wz-step-1">
-      <div class="wz-title">Zu welcher Sektion?</div>
-      <div class="wz-sec-grid" id="wz-sec-grid"></div>
-      <div class="wz-nav">
-        <button class="wz-btn-back" onclick="closeAddModal()">Abbrechen</button>
-      </div>
-    </div>
-
-    <!-- Step 2: Choose type -->
-    <div class="wz-step hidden" id="wz-step-2">
-      <div class="wz-title">Was möchtest du hinzufügen?</div>
-      <div class="wz-type-grid">
-        <div class="wz-type-card" id="wz-card-grp" onclick="wzSelectType('grp')">
-          <div class="wz-type-icon">📁</div>
-          <div>
-            <div class="wz-type-lbl">Kategorie</div>
-            <div class="wz-type-desc">z.B. Versicherung, Kredite, Wohnen</div>
-          </div>
-        </div>
-        <div class="wz-type-card" id="wz-card-item" onclick="wzSelectType('item')">
-          <div class="wz-type-icon">📄</div>
-          <div>
-            <div class="wz-type-lbl">Unterkategorie</div>
-            <div class="wz-type-desc">z.B. ING, Rechtsschutz, Wohngebäude</div>
-          </div>
-        </div>
-      </div>
-      <div class="wz-nav">
-        <button class="wz-btn-back" onclick="wzGoStep(1)">← Zurück</button>
-      </div>
-    </div>
-
-    <!-- Step 3: Details -->
-    <div class="wz-step hidden" id="wz-step-3">
-      <div class="wz-title">Details eingeben</div>
-      <div class="wz-parent-field hidden" id="wz-parent-field">
-        <label>Zu welcher Kategorie gehört sie?</label>
-        <select class="modal-select" id="wz-parent-sel"></select>
-      </div>
-      <div class="wz-name-field">
-        <label>Name</label>
-        <input class="wz-name-input" id="wz-name" type="text" placeholder="Name eingeben …"
-          oninput="wzCheckName()"
-          onkeydown="if(event.key==='Enter')wzSave();if(event.key==='Escape')closeAddModal()">
-      </div>
-      <div class="wz-nav">
-        <button class="wz-btn-back" onclick="wzGoStep(2)">← Zurück</button>
-        <button class="wz-btn-next" id="wz-next-3" onclick="wzSave()" disabled>✓ Hinzufügen</button>
-      </div>
-    </div>
+<!-- ── Add Wizard ── -->
+<div id="wizard-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeAddModal()">
+  <div id="wizard-box" style="background:#fff;border-radius:16px;padding:28px 24px 24px;width:min(360px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.2);" onclick="event.stopPropagation()">
+    <div id="wizard-content"></div>
   </div>
-</div>
 </div>
 <!-- ── Home: New Book Modal ── -->
 <div id="home-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;">
