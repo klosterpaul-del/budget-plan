@@ -1836,7 +1836,31 @@ function showAppView(bookId) {
   _bookDataListener = _bookRef(bookId).on('value', snap => {
     const val = snap.val();
     if (val && val.data) {
-      appData   = val.data;
+      // Firebase may return objects instead of arrays — normalise to arrays
+      const raw = val.data;
+      appData = (Array.isArray(raw) ? raw : Object.values(raw)).map(sec => ({
+        ...sec,
+        groups: Array.isArray(sec.groups)
+          ? sec.groups
+          : Object.values(sec.groups || {})
+      })).map(sec => ({
+        ...sec,
+        groups: sec.groups.map(grp => ({
+          ...grp,
+          items: Array.isArray(grp.items)
+            ? grp.items
+            : Object.values(grp.items || {})
+        }))
+      })).map(sec => ({
+        ...sec,
+        groups: sec.groups.map(grp => ({
+          ...grp,
+          items: grp.items.map(it => ({
+            ...it,
+            v: Array.isArray(it.v) ? it.v : Object.values(it.v || {})
+          }))
+        }))
+      }));
       checkState = val.checks || {};
     } else {
       appData    = JSON.parse(JSON.stringify(SCHEMA));
@@ -1995,8 +2019,10 @@ function setHomeMode(mode) {
   document.getElementById('hm-source-field').classList.toggle('hidden', mode !== 'copy');
 }
 
-async function saveNewBook() {
-  if (!currentUser) { alert('Nicht eingeloggt.'); return; }
+function saveNewBook() {
+  const user = firebase.auth().currentUser;
+  if (!user) { alert('Nicht eingeloggt.'); return; }
+
   const name = document.getElementById('hm-name').value.trim();
   if (!name) { document.getElementById('hm-name').focus(); return; }
 
@@ -2004,44 +2030,42 @@ async function saveNewBook() {
   btn.disabled = true;
   btn.textContent = '…';
 
-  try {
-    const newId = 'book_' + Date.now();
-    let bookData;
-    if (_hmMode === 'copy') {
-      const sourceId = document.getElementById('hm-source').value;
-      const snap = await _bookRef(sourceId).once('value');
-      const raw = snap.val();
-      bookData = raw && raw.data
-        ? JSON.parse(JSON.stringify(raw))
-        : {_v: DATA_VER, data: JSON.parse(JSON.stringify(SCHEMA)), checks: {}};
-      bookData.data.forEach(sec => {
-        sec.groups.forEach(grp => {
-          grp.id = 'grp_' + Math.random().toString(36).slice(2);
-          grp.items.forEach(it => { it.id = 'item_' + Math.random().toString(36).slice(2); });
-        });
-      });
-      bookData.checks = {};
-    } else {
-      bookData = {_v: DATA_VER, checks: {}, data: [
-        { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: [] },
-        { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: [] },
-        { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: [] },
-        { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: [] },
-      ]};
-    }
-    const lastEdited = new Date().toISOString();
-    await _bookRef(newId).set(bookData);
-    await _indexRef().child(newId).set({id: newId, name, lastEdited});
-    _booksCache.push({id: newId, name, lastEdited, totals: {ein:0, aus:0}});
+  const db = firebase.database();
+  const newId = 'book_' + Date.now();
+
+  // Empty sections as plain object (Firebase-safe, no arrays at top level)
+  const emptySections = {
+    ein: { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: {} },
+    aus: { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: {} },
+    bud: { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: {} },
+    spa: { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: {} }
+  };
+
+  const lastEdited = new Date().toISOString();
+
+  db.ref('users/' + user.uid + '/books/' + newId).set({
+    _v: DATA_VER,
+    checks: {},
+    data: emptySections
+  })
+  .then(() => db.ref('users/' + user.uid + '/index/' + newId).set({
+    id: newId, name: name, lastEdited: lastEdited
+  }))
+  .then(() => {
+    console.log('Buch erstellt:', name, newId);
     closeHomeModal();
+    // Cache update — index listener will also fire and re-render
+    _booksCache.push({id: newId, name: name, lastEdited: lastEdited, totals: {ein:0, aus:0}});
     renderHome();
-  } catch(e) {
+  })
+  .catch(e => {
     console.error('saveNewBook error:', e);
     alert('Fehler beim Erstellen: ' + e.message);
-  } finally {
+  })
+  .finally(() => {
     btn.disabled = false;
     btn.textContent = 'Erstellen';
-  }
+  });
 }
 
 // ═══════════════════════════════════════
