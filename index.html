@@ -1996,39 +1996,52 @@ function setHomeMode(mode) {
 }
 
 async function saveNewBook() {
+  if (!currentUser) { alert('Nicht eingeloggt.'); return; }
   const name = document.getElementById('hm-name').value.trim();
   if (!name) { document.getElementById('hm-name').focus(); return; }
-  const newId = 'book_' + Date.now();
-  let bookData;
-  if (_hmMode === 'copy') {
-    const sourceId = document.getElementById('hm-source').value;
-    const snap = await _bookRef(sourceId).once('value');
-    const raw = snap.val();
-    bookData = raw && raw.data
-      ? JSON.parse(JSON.stringify(raw))
-      : {_v: DATA_VER, data: JSON.parse(JSON.stringify(SCHEMA)), checks: {}};
-    // Re-generate all IDs to avoid collisions
-    bookData.data.forEach(sec => {
-      sec.groups.forEach(grp => {
-        grp.id = 'grp_' + Math.random().toString(36).slice(2);
-        grp.items.forEach(it => { it.id = 'item_' + Math.random().toString(36).slice(2); });
+
+  const btn = document.querySelector('.hm-save');
+  btn.disabled = true;
+  btn.textContent = '…';
+
+  try {
+    const newId = 'book_' + Date.now();
+    let bookData;
+    if (_hmMode === 'copy') {
+      const sourceId = document.getElementById('hm-source').value;
+      const snap = await _bookRef(sourceId).once('value');
+      const raw = snap.val();
+      bookData = raw && raw.data
+        ? JSON.parse(JSON.stringify(raw))
+        : {_v: DATA_VER, data: JSON.parse(JSON.stringify(SCHEMA)), checks: {}};
+      bookData.data.forEach(sec => {
+        sec.groups.forEach(grp => {
+          grp.id = 'grp_' + Math.random().toString(36).slice(2);
+          grp.items.forEach(it => { it.id = 'item_' + Math.random().toString(36).slice(2); });
+        });
       });
-    });
-    bookData.checks = {};
-  } else {
-    bookData = {_v: DATA_VER, checks: {}, data: [
-      { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: [] },
-      { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: [] },
-      { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: [] },
-      { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: [] },
-    ]};
+      bookData.checks = {};
+    } else {
+      bookData = {_v: DATA_VER, checks: {}, data: [
+        { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: [] },
+        { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: [] },
+        { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: [] },
+        { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: [] },
+      ]};
+    }
+    const lastEdited = new Date().toISOString();
+    await _bookRef(newId).set(bookData);
+    await _indexRef().child(newId).set({id: newId, name, lastEdited});
+    _booksCache.push({id: newId, name, lastEdited, totals: {ein:0, aus:0}});
+    closeHomeModal();
+    renderHome();
+  } catch(e) {
+    console.error('saveNewBook error:', e);
+    alert('Fehler beim Erstellen: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Erstellen';
   }
-  const lastEdited = new Date().toISOString();
-  await _bookRef(newId).set(bookData);
-  await _indexRef().child(newId).set({id: newId, name, lastEdited});
-  _booksCache.push({id: newId, name, lastEdited, totals: {ein:0, aus:0}});
-  closeHomeModal();
-  renderHome();
 }
 
 // ═══════════════════════════════════════
