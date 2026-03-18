@@ -33,6 +33,7 @@
   --orange: #ff9f0a;
   --purple: #af52de;
   --teal:   #5ac8fa;
+  --amber:  #F59E0B;
 
   /* Tinted dims */
   --green-dim:  rgba(52,199,89,.1);
@@ -231,13 +232,13 @@ td:last-child{
 .s-ein td{background:rgba(52,199,89,.12);color:var(--green)}
 .s-aus td{background:rgba(255,59,48,.12);color:var(--red)}
 .s-bud td{background:rgba(175,82,222,.12);color:var(--purple)}
-.s-spa td{background:rgba(0,122,255,.12);color:var(--blue)}
+.s-spa td{background:rgba(245,158,11,.12);color:var(--amber)}
 .s-cust td{background:rgba(90,200,250,.12);color:var(--teal)}
 /* frozen first cell — explicit bg per section so no transparency when scrolled */
 .s-ein td:first-child{background:rgba(52,199,89,.12)}
 .s-aus td:first-child{background:rgba(255,59,48,.12)}
 .s-bud td:first-child{background:rgba(175,82,222,.12)}
-.s-spa td:first-child{background:rgba(0,122,255,.12)}
+.s-spa td:first-child{background:rgba(245,158,11,.12)}
 .s-cust td:first-child{background:rgba(90,200,250,.12)}
 /* hover: uniform blue tint across all section rows */
 .rs:hover td{background:rgba(0,122,255,.06)}
@@ -246,7 +247,7 @@ td:last-child{
 .s-ein td:last-child{color:var(--green)}
 .s-aus td:last-child{color:var(--red)}
 .s-bud td:last-child{color:var(--purple)}
-.s-spa td:last-child{color:var(--blue)}
+.s-spa td:last-child{color:var(--amber)}
 
 /* ── Group Rows ──────────────────────────────────── */
 .rg{cursor:pointer;user-select:none}
@@ -256,11 +257,11 @@ td:last-child{
 .rg[data-sec="ein"] td{background:rgba(52,199,89,.06)}
 .rg[data-sec="aus"] td{background:rgba(255,59,48,.06)}
 .rg[data-sec="bud"] td{background:rgba(175,82,222,.06)}
-.rg[data-sec="spa"] td{background:rgba(0,122,255,.06)}
+.rg[data-sec="spa"] td{background:rgba(245,158,11,.06)}
 .rg[data-sec="ein"] td:first-child{background:rgba(52,199,89,.06)}
 .rg[data-sec="aus"] td:first-child{background:rgba(255,59,48,.06)}
 .rg[data-sec="bud"] td:first-child{background:rgba(175,82,222,.06)}
-.rg[data-sec="spa"] td:first-child{background:rgba(0,122,255,.06)}
+.rg[data-sec="spa"] td:first-child{background:rgba(245,158,11,.06)}
 /* group hover */
 .rg:hover td{background:rgba(0,122,255,.06)}
 .rg:hover td:first-child{background:rgba(0,122,255,.06)}
@@ -1056,7 +1057,7 @@ const SCHEMA = [
       { id:'car_fuel',       name:'Car Fuel',       v:[500,500,500,500,500,500,500,500,500,500,500,500] }
     ]}]
   },
-  { id:'spa', label:'Sparen', cls:'s-spa', color:'#0a84ff',
+  { id:'spa', label:'Sparen', cls:'s-spa', color:'#F59E0B',
     groups:[{ id:'spa_g', label:null, items:[
       { id:'backup_kathleen', name:'Back Up Kathleen', v:[500,500,500,350,350,350,350,350,350,350,350,350] },
       { id:'riester',         name:'Riester Kathleen', v:[115,115,115,0,0,0,0,0,0,0,0,0] },
@@ -1334,7 +1335,7 @@ function renderTable() {
     {id:'sum-ein', lbl:'∑ Einnahmen', d:e,  c:'var(--green)'},
     {id:'sum-aus', lbl:'∑ Ausgaben',  d:a,  c:'var(--red)'},
     {id:'sum-bud', lbl:'∑ Budget',    d:b,  c:'var(--purple)'},
-    {id:'sum-spa', lbl:'∑ Sparen',    d:sp, c:'var(--blue)'},
+    {id:'sum-spa', lbl:'∑ Sparen',    d:sp, c:'var(--amber)'},
   ];
   sumRows.forEach(r => {
     html += `<tr class="rsum"><td style="color:${r.c}">${r.lbl}</td>`;
@@ -1407,7 +1408,7 @@ function updateKPIStrip() {
     {lbl:'Einnahmen',           val:ey,  c:'var(--green)'},
     {lbl:'Ausgaben',            val:ay,  c:'var(--red)'},
     {lbl:'Budget',              val:by,  c:'var(--purple)'},
-    {lbl:'Sparen',              val:spy, c:'var(--blue)'},
+    {lbl:'Sparen',              val:spy, c:'var(--amber)'},
     {lbl:'⏳ Noch zu zahlen',   val:fay, c:fay>0?'var(--red)':'var(--green)'},
     {lbl:'✅ Frei (total)',     val:fy,  c:fy>=0?'var(--green)':'var(--red)'},
   ];
@@ -1570,7 +1571,7 @@ const ADD_COLORS = [
 
 function colorToClass(hex) {
   return {
-    '#34C759':'s-ein','#FF3B30':'s-aus','#007AFF':'s-spa',
+    '#34C759':'s-ein','#FF3B30':'s-aus','#F59E0B':'s-spa',
     '#AF52DE':'s-bud','#5AC8FA':'s-cust','#FF9500':'s-orange',
     '#FF2D55':'s-pink','#A2845E':'s-brown','#636366':'s-gray',
     '#FFD60A':'s-yellow',
@@ -1953,7 +1954,7 @@ function doCreateBook() {
       { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: [] },
       { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: [] },
       { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: [] },
-      { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: [] }
+      { id:'spa', label:'Sparen',    cls:'s-spa', color:'#F59E0B', groups: [] }
     ]
   })
   .then(function() {
@@ -2046,7 +2047,7 @@ function renderDashboard() {
     {lbl:'Einnahmen',     val:ey, c:'var(--green)'},
     {lbl:'Ausgaben',      val:ay, c:'var(--orange)'},
     {lbl:'Budget',        val:by, c:'var(--purple)'},
-    {lbl:'Sparen',        val:spy,c:'var(--blue)'},
+    {lbl:'Sparen',        val:spy,c:'var(--amber)'},
     {lbl:'Frei verfügbar',val:fy, c:fy>=0?'var(--green)':'var(--red)'},
   ];
   document.getElementById('kpi-row').innerHTML = kpis.map(k=>{
@@ -2071,7 +2072,7 @@ function renderDashboard() {
         {label:'Einnahmen', data:e,  backgroundColor:'rgba(48,209,88,.5)', borderColor:'#30d158',borderWidth:1,borderRadius:4},
         {label:'Ausgaben',  data:a,  backgroundColor:'rgba(255,159,10,.5)',borderColor:'#ff9f0a',borderWidth:1,borderRadius:4},
         {label:'Budget',    data:b,  backgroundColor:'rgba(191,90,242,.5)',borderColor:'#bf5af2',borderWidth:1,borderRadius:4},
-        {label:'Sparen',    data:sp, backgroundColor:'rgba(10,132,255,.5)',borderColor:'#0a84ff',borderWidth:1,borderRadius:4},
+        {label:'Sparen',    data:sp, backgroundColor:'rgba(245,158,11,.5)',borderColor:'#F59E0B',borderWidth:1,borderRadius:4},
         {label:'Frei verfügbar',data:f,type:'line',borderColor:'rgba(255,255,255,.7)',backgroundColor:'rgba(255,255,255,.05)',
           tension:.35,fill:false,pointRadius:4,pointBackgroundColor:'#fff',borderWidth:2,yAxisID:'y'}
       ]
@@ -2124,7 +2125,7 @@ function renderDashboard() {
       labels:['Ausgaben','Budget','Sparen','Frei verfügbar'],
       datasets:[{
         data:[ay,by,spy,Math.max(0,fy)],
-        backgroundColor:['#ff9f0a','#bf5af2','#0a84ff','#30d158'],
+        backgroundColor:['#ff9f0a','#bf5af2','#F59E0B','#30d158'],
         borderColor:'rgba(28,28,30,.8)',
         borderWidth:2,
         hoverOffset:8
