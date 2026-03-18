@@ -812,13 +812,13 @@ tr.drag-over-bottom td{border-bottom:2px solid #007AFF!important}
 .share-backdrop.open{opacity:1;pointer-events:auto}
 .share-modal{
   position:fixed;left:50%;top:50%;
-  transform:translate(-50%,-50%) scale(.95);opacity:0;
+  transform:translate(-50%,-50%) scale(.95);opacity:0;pointer-events:none;
   width:min(400px,90vw);background:#fff;border-radius:16px;
   box-shadow:0 8px 40px rgba(0,0,0,.15);z-index:601;
   padding:28px 24px 20px;
   transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s;
 }
-.share-modal.open{transform:translate(-50%,-50%) scale(1);opacity:1}
+.share-modal.open{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
 .share-title{font-size:17px;font-weight:700;color:#1c1c1e;margin-bottom:16px;text-align:center}
 .share-field{margin-bottom:12px}
 .share-success{
