@@ -1653,11 +1653,11 @@ function addItemToData(secId, typ, name, grpId) {
   if (typ === 'grp') {
     sec.groups.push({id:'grp_'+Date.now(), label:name, color:sec.color, items:[]});
   } else {
-    var grp = grpId
+    var grp = (grpId && grpId !== '')
       ? sec.groups.find(function(g) { return g.id === grpId; })
-      : sec.groups.find(function(g) { return g.label; });
+      : (sec.groups.find(function(g) { return g.label; }) || sec.groups[0]);
     if (!grp) {
-      grp = {id:'grp_'+Date.now(), label:sec.label, color:sec.color, items:[]};
+      grp = {id:'grp_'+Date.now(), label:null, color:sec.color, items:[]};
       sec.groups.push(grp);
     }
     grp.items.push({id:'item_'+Date.now(), name:name, v:new Array(12).fill(0)});
