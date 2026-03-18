@@ -903,33 +903,39 @@ tr.drag-over-bottom td{border-bottom:2px solid #007AFF!important}
   <div id="view-table">
     <div class="kpi-strip" id="kpi-strip"></div>
     <div class="add-bar">
-      <button class="add-main-btn" id="add-main-btn" onclick="openAddPanel()">
+      <button class="add-main-btn" id="add-main-btn" onclick="panelOpen()">
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
         Hinzufügen
       </button>
     </div>
-    <div id="inline-add-panel" style="display:none;background:#f5f5f7;border-radius:12px;padding:16px;margin-bottom:12px;">
-      <div style="margin-bottom:10px">
-        <div style="font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Sektion</div>
-        <div id="ap-sec-row" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-      </div>
-      <div style="margin-bottom:10px">
-        <div style="font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Typ</div>
-        <div style="display:flex;gap:18px">
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:14px;color:#1c1c1e;font-weight:500">
-            <input type="radio" name="ap-type" value="grp" id="ap-type-grp"> Kategorie
-          </label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:14px;color:#1c1c1e;font-weight:500">
-            <input type="radio" name="ap-type" value="item" id="ap-type-item" checked> Unterkategorie
-          </label>
+    <div id="add-panel" style="display:none;background:#f5f5f7;border-radius:12px;padding:16px;margin-bottom:12px;position:relative;">
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <div>
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">SEKTION</label>
+          <select id="panel-sektion" style="padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;min-width:130px;font-family:inherit;background:#fff;outline:none">
+            <option value="ein">Einnahmen</option>
+            <option value="aus">Ausgaben</option>
+            <option value="bud">Budget</option>
+            <option value="spa">Sparen</option>
+          </select>
         </div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" id="ap-name" placeholder="Name eingeben …"
-          style="flex:1;padding:9px 12px;border:1.5px solid #e5e5ea;border-radius:9px;font-size:14px;font-family:inherit;outline:none;background:#fff"
-          onkeydown="if(event.key==='Enter')addPanelSave();if(event.key==='Escape')closeAddPanel()">
-        <button onclick="addPanelSave()" style="padding:9px 18px;background:#007AFF;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit">Hinzufügen</button>
-        <button onclick="closeAddPanel()" style="padding:9px 10px;background:none;border:none;cursor:pointer;font-size:14px;color:#8e8e93;font-family:inherit">Abbrechen</button>
+        <div>
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">TYP</label>
+          <select id="panel-typ" style="padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;min-width:140px;font-family:inherit;background:#fff;outline:none">
+            <option value="grp">Kategorie</option>
+            <option value="item">Unterkategorie</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:160px">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">NAME</label>
+          <input type="text" id="panel-name" placeholder="Name eingeben"
+            style="width:100%;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box;font-family:inherit;outline:none;background:#fff"
+            onkeydown="if(event.key==='Enter')panelSave();if(event.key==='Escape')panelClose()">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="button" onclick="panelSave()" style="padding:8px 20px;background:#007AFF;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">✓ Hinzufügen</button>
+          <button type="button" onclick="panelClose()" style="padding:8px 16px;background:none;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit">Abbrechen</button>
+        </div>
       </div>
     </div>
     <div class="tw">
@@ -1572,55 +1578,21 @@ function colorToClass(hex) {
 // ADD INLINE PANEL
 // ═══════════════════════════════════════
 
-var _apSec = 'ein';
-var AP_SECS = [
-  {id:'ein', label:'Einnahmen', color:'#34C759'},
-  {id:'aus', label:'Ausgaben',  color:'#FF3B30'},
-  {id:'bud', label:'Budget',    color:'#AF52DE'},
-  {id:'spa', label:'Sparen',    color:'#007AFF'},
-];
-
-function openAddPanel() {
-  _apSec = 'ein';
-  document.getElementById('inline-add-panel').style.display = 'block';
-  apRenderSecs();
-  document.getElementById('ap-name').value = '';
-  document.getElementById('ap-type-item').checked = true;
-  setTimeout(function() { document.getElementById('ap-name').focus(); }, 30);
+function panelOpen() {
+  document.getElementById('add-panel').style.display = 'block';
+  document.getElementById('panel-name').focus();
 }
 
-function apRenderSecs() {
-  var row = document.getElementById('ap-sec-row');
-  row.innerHTML = '';
-  AP_SECS.forEach(function(s) {
-    var btn = document.createElement('button');
-    var active = s.id === _apSec;
-    btn.textContent = s.label;
-    btn.onclick = function() { _apSec = s.id; apRenderSecs(); };
-    btn.style.cssText = 'padding:7px 14px;border-radius:20px;border:2px solid '
-      + (active ? s.color : '#e5e5ea') + ';background:'
-      + (active ? s.color : '#fff') + ';color:'
-      + (active ? '#fff' : '#636366')
-      + ';font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
-    row.appendChild(btn);
-  });
+function panelClose() {
+  document.getElementById('add-panel').style.display = 'none';
+  document.getElementById('panel-name').value = '';
+  document.getElementById('panel-name').style.borderColor = '';
 }
 
-function closeAddPanel() {
-  document.getElementById('inline-add-panel').style.display = 'none';
-}
-
-function addPanelSave() {
-  var name = document.getElementById('ap-name').value.trim();
-  if (!name) { document.getElementById('ap-name').focus(); return; }
-
-  var typeEl = document.querySelector('input[name="ap-type"]:checked');
-  var typeVal = typeEl ? typeEl.value : 'item';
-
-  var sec = appData.find(function(x) { return x.id === _apSec; });
+function addItemToData(secId, typ, name) {
+  var sec = appData.find(function(x) { return x.id === secId; });
   if (!sec) return;
-
-  if (typeVal === 'grp') {
+  if (typ === 'grp') {
     sec.groups.push({id:'grp_'+Date.now(), label:name, color:sec.color, items:[]});
   } else {
     var grp = sec.groups.find(function(g) { return g.label; });
@@ -1630,10 +1602,20 @@ function addPanelSave() {
     }
     grp.items.push({id:'item_'+Date.now(), name:name, v:new Array(12).fill(0)});
   }
+}
 
-  closeAddPanel();
-  saveData();
+function panelSave() {
+  var name = document.getElementById('panel-name').value.trim();
+  if (!name) {
+    document.getElementById('panel-name').style.borderColor = '#FF3B30';
+    return;
+  }
+  var secId = document.getElementById('panel-sektion').value;
+  var typ   = document.getElementById('panel-typ').value;
+  addItemToData(secId, typ, name);
+  panelClose();
   renderTable();
+  saveData();
 }
 
 // ═══════════════════════════════════════
