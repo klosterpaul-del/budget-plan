@@ -1991,11 +1991,21 @@ function deleteBook(e, bookId) {
   renderHome();
 }
 
+var _hmMode = 'new';
+
 function openHomeModal() {
-  var modal = document.getElementById('home-modal');
+  _hmMode = 'new';
   document.getElementById('new-book-name').value = '';
   document.getElementById('new-book-error').style.display = 'none';
-  modal.style.display = 'flex';
+  document.getElementById('copy-source-field').style.display = 'none';
+  // Tab styling
+  document.getElementById('tab-new').style.cssText  += ';border-color:#007aff;background:#fff;color:#007aff';
+  document.getElementById('tab-copy').style.cssText += ';border-color:#e5e5ea;background:#f2f2f7;color:#636366';
+  // Populate copy dropdown
+  document.getElementById('copy-source-select').innerHTML = _booksCache.map(function(b) {
+    return '<option value="' + b.id + '">' + escHtml(b.name) + '</option>';
+  }).join('');
+  document.getElementById('home-modal').style.display = 'flex';
   setTimeout(function() { document.getElementById('new-book-name').focus(); }, 80);
 }
 
@@ -2003,73 +2013,107 @@ function closeHomeModal() {
   document.getElementById('home-modal').style.display = 'none';
 }
 
+function _setHmMode(mode) {
+  _hmMode = mode;
+  var isNew = mode === 'new';
+  var tNew  = document.getElementById('tab-new');
+  var tCopy = document.getElementById('tab-copy');
+  tNew.style.borderColor  = isNew ? '#007aff' : '#e5e5ea';
+  tNew.style.background   = isNew ? '#fff'    : '#f2f2f7';
+  tNew.style.color        = isNew ? '#007aff' : '#636366';
+  tCopy.style.borderColor = isNew ? '#e5e5ea' : '#007aff';
+  tCopy.style.background  = isNew ? '#f2f2f7' : '#fff';
+  tCopy.style.color       = isNew ? '#636366' : '#007aff';
+  document.getElementById('copy-source-field').style.display = isNew ? 'none' : 'block';
+}
+
 // Wire up modal buttons after DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('home-modal').addEventListener('click', function(e) {
     if (e.target === this) closeHomeModal();
   });
-
+  document.getElementById('tab-new').addEventListener('click',  function() { _setHmMode('new'); });
+  document.getElementById('tab-copy').addEventListener('click', function() { _setHmMode('copy'); });
   document.getElementById('btn-cancel-modal').addEventListener('click', closeHomeModal);
-
   document.getElementById('new-book-name').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') doCreateBook();
     if (e.key === 'Escape') closeHomeModal();
   });
-
   document.getElementById('btn-create-book').addEventListener('click', doCreateBook);
 });
 
 function doCreateBook() {
-  console.log('Erstellen wurde geklickt');
-
   var errEl = document.getElementById('new-book-error');
   errEl.style.display = 'none';
 
   var user = firebase.auth().currentUser;
-  console.log('currentUser:', user ? user.email : 'NULL');
   if (!user) { errEl.textContent = 'Nicht eingeloggt.'; errEl.style.display = 'block'; return; }
 
   var name = document.getElementById('new-book-name').value.trim();
-  console.log('Buchname:', name);
   if (!name) { document.getElementById('new-book-name').focus(); return; }
 
+  // Disable button immediately to prevent double-submit
   var btn = document.getElementById('btn-create-book');
   btn.disabled = true;
-  btn.textContent = '…';
+  btn.textContent = 'Wird erstellt…';
 
+  var db   = firebase.database();
   var newId = 'book_' + Date.now();
-  console.log('Schreibe nach Firebase, Pfad: users/' + user.uid + '/books/' + newId);
-
-  var db = firebase.database();
-  var emptySections = {
-    ein: { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: {} },
-    aus: { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: {} },
-    bud: { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: {} },
-    spa: { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: {} }
-  };
   var lastEdited = new Date().toISOString();
 
-  db.ref('users/' + user.uid + '/books/' + newId).set({
-    _v: DATA_VER, checks: {}, data: emptySections
+  var dataPromise;
+  if (_hmMode === 'copy') {
+    var sourceId = document.getElementById('copy-source-select').value;
+    dataPromise = db.ref('users/' + user.uid + '/books/' + sourceId).once('value')
+      .then(function(snap) {
+        var raw = snap.val();
+        var bookData = raw ? JSON.parse(JSON.stringify(raw)) : {_v: DATA_VER, checks: {}, data: {}};
+        // Re-generate group/item IDs to avoid collisions
+        if (bookData.data && typeof bookData.data === 'object') {
+          Object.values(bookData.data).forEach(function(sec) {
+            if (!sec.groups) return;
+            Object.values(sec.groups).forEach(function(grp) {
+              var gid = 'grp_' + Math.random().toString(36).slice(2);
+              grp.id = gid;
+              if (grp.items) Object.values(grp.items).forEach(function(it) {
+                it.id = 'item_' + Math.random().toString(36).slice(2);
+              });
+            });
+          });
+        }
+        bookData.checks = {};
+        return bookData;
+      });
+  } else {
+    dataPromise = Promise.resolve({
+      _v: DATA_VER, checks: {},
+      data: {
+        ein: { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: {} },
+        aus: { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: {} },
+        bud: { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: {} },
+        spa: { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: {} }
+      }
+    });
+  }
+
+  dataPromise
+  .then(function(bookData) {
+    return db.ref('users/' + user.uid + '/books/' + newId).set(bookData);
   })
   .then(function() {
-    console.log('Buchdata gespeichert, schreibe Index…');
     return db.ref('users/' + user.uid + '/index/' + newId).set({
       id: newId, name: name, lastEdited: lastEdited
     });
   })
   .then(function() {
-    console.log('✅ Buch erfolgreich erstellt:', name, newId);
     _booksCache.push({id: newId, name: name, lastEdited: lastEdited, totals: {ein:0, aus:0}});
     closeHomeModal();
     renderHome();
   })
   .catch(function(e) {
-    console.error('❌ Fehler:', e.code, e.message);
+    console.error('doCreateBook error:', e.code, e.message);
     errEl.textContent = 'Fehler: ' + e.message;
     errEl.style.display = 'block';
-  })
-  .finally(function() {
     btn.disabled = false;
     btn.textContent = 'Erstellen';
   });
@@ -2691,6 +2735,23 @@ auth.onAuthStateChanged(async user => {
     // Migrate any localStorage data (once) — non-blocking
     migrateLocalToFirebase().catch(e => console.warn('Migration error:', e));
 
+    // ONE-TIME CLEANUP: remove duplicate "test" books
+    (function() {
+      var cleanKey = 'hb_cleaned_test_' + user.uid;
+      if (localStorage.getItem(cleanKey)) return;
+      firebase.database().ref('users/' + user.uid + '/books').once('value', function(snap) {
+        snap.forEach(function(child) {
+          var val = child.val();
+          if (val && (val.name === 'test' || (val.data && Object.keys(val.data).length === 0 && !val._v))) {
+            child.ref.remove();
+            firebase.database().ref('users/' + user.uid + '/index/' + child.key).remove();
+            console.log('Gelöscht (test-Buch):', child.key);
+          }
+        });
+        localStorage.setItem(cleanKey, '1');
+      });
+    })();
+
     // Show home immediately
     document.getElementById('view-home').classList.remove('hidden');
     document.getElementById('view-app').classList.add('hidden');
@@ -2825,8 +2886,28 @@ auth.onAuthStateChanged(async user => {
 </div>
 <!-- ── Home: New Book Modal ── -->
 <div id="home-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:28px 24px 24px;width:min(360px,90vw);box-shadow:0 8px 40px rgba(0,0,0,.18);" onclick="event.stopPropagation()">
-    <div style="font-size:18px;font-weight:700;color:#1c1c1e;margin-bottom:18px;">Neues Budget Plan</div>
+  <div style="background:#fff;border-radius:20px;padding:28px 24px 24px;width:min(380px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.18);" onclick="event.stopPropagation()">
+    <div style="font-size:18px;font-weight:700;color:#1c1c1e;margin-bottom:16px;">Neues Budget Plan</div>
+    <!-- Mode tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button type="button" id="tab-new"
+        style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #007aff;background:#fff;color:#007aff;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;">
+        Neu erstellen
+      </button>
+      <button type="button" id="tab-copy"
+        style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e5e5ea;background:#f2f2f7;color:#636366;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;">
+        Kopieren von …
+      </button>
+    </div>
+    <!-- Copy source dropdown (hidden by default) -->
+    <div id="copy-source-field" style="display:none;margin-bottom:12px;">
+      <label style="display:block;font-size:11px;font-weight:600;color:#636366;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Quelle</label>
+      <select id="copy-source-select"
+        style="width:100%;padding:10px 12px;border:1.5px solid #e5e5ea;border-radius:10px;font-size:14px;font-family:inherit;background:#fff;outline:none;">
+      </select>
+    </div>
+    <!-- Name input -->
+    <label style="display:block;font-size:11px;font-weight:600;color:#636366;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Name</label>
     <input type="text" id="new-book-name" placeholder="z.B. 2027"
       style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e5e5ea;border-radius:10px;font-size:15px;font-family:inherit;outline:none;margin-bottom:12px;">
     <div id="new-book-error" style="display:none;color:#ff3b30;font-size:13px;margin-bottom:10px;padding:8px 12px;background:rgba(255,59,48,.08);border-radius:8px;"></div>
