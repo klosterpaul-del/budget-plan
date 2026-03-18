@@ -2656,53 +2656,59 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('auth-email').classList.remove('hidden');
     document.getElementById('btn-logout').classList.remove('hidden');
 
-    // Migrate any localStorage data (once)
-    await migrateLocalToFirebase();
+    // Migrate any localStorage data (once) — non-blocking
+    migrateLocalToFirebase().catch(e => console.warn('Migration error:', e));
+
+    // Show home immediately
+    document.getElementById('view-home').style.display = 'block';
+    document.getElementById('view-app').style.display = 'none';
 
     // Listen to books index in real-time
-    _indexRef().on('value', async snap => {
+    _indexRef().on('value', snap => {
       const raw = snap.val() || {};
       const entries = Object.values(raw);
+      console.log('Index snapshot — entries:', entries.length, entries.map(e => e.id));
 
-      // Load totals for each book (one-shot)
-      for (const entry of entries) {
-        if (!entry.totals) {
-          try {
-            const bsnap = await _bookRef(entry.id).child('data').once('value');
-            const data  = bsnap.val();
-            if (data) {
-              const sumSec = sid => {
-                const sec = data.find ? data.find(x=>x.id===sid) : Object.values(data).find(x=>x.id===sid);
-                if (!sec) return 0;
-                const gs = Array.isArray(sec.groups) ? sec.groups : Object.values(sec.groups || {});
-                return gs.reduce((a,g) => {
-                  const its = Array.isArray(g.items) ? g.items : Object.values(g.items || {});
-                  return a + its.reduce((b,it) => {
-                    const vs = Array.isArray(it.v) ? it.v : Object.values(it.v || {});
-                    return b + vs.reduce((c,v)=>c+(v||0),0);
-                  }, 0);
-                }, 0);
-              };
-              entry.totals = {ein: sumSec('ein'), aus: sumSec('aus')};
-            } else { entry.totals = {ein:0, aus:0}; }
-          } catch(e) { entry.totals = {ein:0, aus:0}; }
-        }
-      }
+      _booksCache = entries
+        .map(e => ({...e, totals: e.totals || {ein:0, aus:0}}))
+        .sort((a,b) => (b.lastEdited||'').localeCompare(a.lastEdited||''));
 
-      _booksCache = entries.sort((a,b) => (b.lastEdited||'').localeCompare(a.lastEdited||''));
+      // Render immediately with placeholder totals
+      renderHome();
 
       // If no books yet → create default
       if (_booksCache.length === 0) {
         const id = 'book_' + Date.now();
         const bookData = {_v: DATA_VER, checks: {}, data: JSON.parse(JSON.stringify(SCHEMA))};
-        await _bookRef(id).set(bookData);
-        await _indexRef().child(id).set({id, name: new Date().getFullYear().toString(), lastEdited: new Date().toISOString()});
-        return; // listener will fire again
+        _bookRef(id).set(bookData)
+          .then(() => _indexRef().child(id).set({id, name: new Date().getFullYear().toString(), lastEdited: new Date().toISOString()}))
+          .catch(e => console.error('Default book creation failed:', e));
+        return;
       }
 
-      document.getElementById('view-home').style.display = 'block';
-      document.getElementById('view-app').style.display = 'none';
-      renderHome();
+      // Load totals in background, re-render when done
+      Promise.all(entries.map(async entry => {
+        try {
+          const bsnap = await _bookRef(entry.id).child('data').once('value');
+          const data = bsnap.val();
+          if (!data) return;
+          const secs = Array.isArray(data) ? data : Object.values(data);
+          const sumSec = sid => {
+            const sec = secs.find(x => x.id === sid);
+            if (!sec) return 0;
+            const gs = Array.isArray(sec.groups) ? sec.groups : Object.values(sec.groups || {});
+            return gs.reduce((a,g) => {
+              const its = Array.isArray(g.items) ? g.items : Object.values(g.items || {});
+              return a + its.reduce((b,it) => {
+                const vs = Array.isArray(it.v) ? it.v : Object.values(it.v || {});
+                return b + vs.reduce((c,v) => c + (v||0), 0);
+              }, 0);
+            }, 0);
+          };
+          const cached = _booksCache.find(b => b.id === entry.id);
+          if (cached) cached.totals = {ein: sumSec('ein'), aus: sumSec('aus')};
+        } catch(e) { console.warn('Totals load failed for', entry.id, e); }
+      })).then(() => renderHome()).catch(console.warn);
     });
   } else {
     // Stop index listener before clearing currentUser
