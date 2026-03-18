@@ -816,6 +816,7 @@ tr.drag-over-bottom td{border-bottom:2px solid #007AFF!important}
   background-size:12px;padding-right:32px;cursor:pointer;
 }
 .hm-select:focus{background-color:#fff}
+.hm-error{font-size:13px;color:var(--red);background:rgba(255,59,48,.08);border-radius:8px;padding:9px 12px;margin-top:10px}
 .hm-actions{display:flex;gap:10px;margin-top:20px}
 .hm-save{
   flex:1;padding:12px;background:var(--blue);color:#fff;
@@ -2019,52 +2020,65 @@ function setHomeMode(mode) {
   document.getElementById('hm-source-field').classList.toggle('hidden', mode !== 'copy');
 }
 
+function _hmShowError(msg) {
+  const el = document.getElementById('hm-error');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+function _hmClearError() {
+  const el = document.getElementById('hm-error');
+  if (el) el.classList.add('hidden');
+}
+
 function saveNewBook() {
+  console.log('Erstellen wurde geklickt');
+  _hmClearError();
+
   const user = firebase.auth().currentUser;
-  if (!user) { alert('Nicht eingeloggt.'); return; }
+  console.log('currentUser:', user ? user.email : 'NULL');
+  if (!user) { _hmShowError('Nicht eingeloggt.'); return; }
 
   const name = document.getElementById('hm-name').value.trim();
+  console.log('Buchname:', name);
   if (!name) { document.getElementById('hm-name').focus(); return; }
 
-  const btn = document.querySelector('.hm-save');
-  btn.disabled = true;
-  btn.textContent = '…';
+  const btn = document.getElementById('hm-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
 
   const db = firebase.database();
   const newId = 'book_' + Date.now();
+  console.log('Schreibe nach Firebase, ID:', newId);
 
-  // Empty sections as plain object (Firebase-safe, no arrays at top level)
   const emptySections = {
     ein: { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: {} },
     aus: { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: {} },
     bud: { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: {} },
     spa: { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: {} }
   };
-
   const lastEdited = new Date().toISOString();
 
   db.ref('users/' + user.uid + '/books/' + newId).set({
-    _v: DATA_VER,
-    checks: {},
-    data: emptySections
+    _v: DATA_VER, checks: {}, data: emptySections
   })
-  .then(() => db.ref('users/' + user.uid + '/index/' + newId).set({
-    id: newId, name: name, lastEdited: lastEdited
-  }))
-  .then(() => {
-    console.log('Buch erstellt:', name, newId);
-    closeHomeModal();
-    // Cache update — index listener will also fire and re-render
+  .then(function() {
+    console.log('Buchdata gespeichert, schreibe Index…');
+    return db.ref('users/' + user.uid + '/index/' + newId).set({
+      id: newId, name: name, lastEdited: lastEdited
+    });
+  })
+  .then(function() {
+    console.log('✅ Buch erfolgreich erstellt:', name, newId);
     _booksCache.push({id: newId, name: name, lastEdited: lastEdited, totals: {ein:0, aus:0}});
+    closeHomeModal();
     renderHome();
   })
-  .catch(e => {
-    console.error('saveNewBook error:', e);
-    alert('Fehler beim Erstellen: ' + e.message);
+  .catch(function(e) {
+    console.error('❌ saveNewBook Fehler:', e.code, e.message);
+    _hmShowError('Fehler: ' + e.message);
   })
-  .finally(() => {
-    btn.disabled = false;
-    btn.textContent = 'Erstellen';
+  .finally(function() {
+    if (btn) { btn.disabled = false; btn.textContent = 'Erstellen'; }
   });
 }
 
@@ -2831,9 +2845,10 @@ auth.onAuthStateChanged(async user => {
     <label>Kopieren von</label>
     <select class="hm-select" id="hm-source"></select>
   </div>
+  <div class="hm-error hidden" id="hm-error"></div>
   <div class="hm-actions">
     <button type="button" class="hm-cancel" onclick="closeHomeModal()">Abbrechen</button>
-    <button type="button" class="hm-save" onclick="saveNewBook()">Erstellen</button>
+    <button type="button" class="hm-save" id="hm-save-btn" onclick="saveNewBook()">Erstellen</button>
   </div>
 </div>
 <!-- ── Month-Copy Popup ── -->
