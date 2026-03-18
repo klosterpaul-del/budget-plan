@@ -446,7 +446,7 @@ tr.rs:hover .del-sec-btn{display:block}
 .modal-backdrop{
   position:fixed;inset:0;background:rgba(0,0,0,.4);
   display:flex;align-items:center;justify-content:center;
-  z-index:500;opacity:0;pointer-events:none;transition:opacity .2s;
+  z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;
 }
 .modal-backdrop.open{opacity:1;pointer-events:auto}
 .modal-sheet{
@@ -1707,7 +1707,9 @@ function openAddModal() {
   wzShowStep(1, null);
   wzUpdateProgress(1);
   document.body.style.overflow = 'hidden';
-  document.getElementById('modal-backdrop').classList.add('open');
+  var mb = document.getElementById('modal-backdrop');
+  document.body.appendChild(mb); // ensure topmost DOM position
+  mb.classList.add('open');
   requestAnimationFrame(() => document.getElementById('modal-sheet').classList.add('open'));
 }
 
