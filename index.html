@@ -1992,71 +1992,62 @@ function deleteBook(e, bookId) {
 }
 
 function openHomeModal() {
-  _hmMode = 'new';
-  document.getElementById('hm-name').value = '';
-  document.getElementById('hm-mode-new').classList.add('active');
-  document.getElementById('hm-mode-copy').classList.remove('active');
-  document.getElementById('hm-source-field').classList.add('hidden');
-  // populate copy dropdown from cache
-  document.getElementById('hm-source').innerHTML = _booksCache.map(b =>
-    `<option value="${b.id}">${escHtml(b.name)}</option>`
-  ).join('');
-  document.getElementById('hm-backdrop').classList.add('open');
-  requestAnimationFrame(() => {
-    document.getElementById('hm-modal').classList.add('open');
-    setTimeout(() => document.getElementById('hm-name').focus(), 80);
-  });
+  var modal = document.getElementById('home-modal');
+  document.getElementById('new-book-name').value = '';
+  document.getElementById('new-book-error').style.display = 'none';
+  modal.style.display = 'flex';
+  setTimeout(function() { document.getElementById('new-book-name').focus(); }, 80);
 }
 
 function closeHomeModal() {
-  document.getElementById('hm-backdrop').classList.remove('open');
-  document.getElementById('hm-modal').classList.remove('open');
+  document.getElementById('home-modal').style.display = 'none';
 }
 
-function setHomeMode(mode) {
-  _hmMode = mode;
-  document.getElementById('hm-mode-new').classList.toggle('active', mode === 'new');
-  document.getElementById('hm-mode-copy').classList.toggle('active', mode === 'copy');
-  document.getElementById('hm-source-field').classList.toggle('hidden', mode !== 'copy');
-}
+// Wire up modal buttons after DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('home-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeHomeModal();
+  });
 
-function _hmShowError(msg) {
-  const el = document.getElementById('hm-error');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.remove('hidden');
-}
-function _hmClearError() {
-  const el = document.getElementById('hm-error');
-  if (el) el.classList.add('hidden');
-}
+  document.getElementById('btn-cancel-modal').addEventListener('click', closeHomeModal);
 
-function saveNewBook() {
+  document.getElementById('new-book-name').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doCreateBook();
+    if (e.key === 'Escape') closeHomeModal();
+  });
+
+  document.getElementById('btn-create-book').addEventListener('click', doCreateBook);
+});
+
+function doCreateBook() {
   console.log('Erstellen wurde geklickt');
-  _hmClearError();
 
-  const user = firebase.auth().currentUser;
+  var errEl = document.getElementById('new-book-error');
+  errEl.style.display = 'none';
+
+  var user = firebase.auth().currentUser;
   console.log('currentUser:', user ? user.email : 'NULL');
-  if (!user) { _hmShowError('Nicht eingeloggt.'); return; }
+  if (!user) { errEl.textContent = 'Nicht eingeloggt.'; errEl.style.display = 'block'; return; }
 
-  const name = document.getElementById('hm-name').value.trim();
+  var name = document.getElementById('new-book-name').value.trim();
   console.log('Buchname:', name);
-  if (!name) { document.getElementById('hm-name').focus(); return; }
+  if (!name) { document.getElementById('new-book-name').focus(); return; }
 
-  const btn = document.getElementById('hm-save-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  var btn = document.getElementById('btn-create-book');
+  btn.disabled = true;
+  btn.textContent = '…';
 
-  const db = firebase.database();
-  const newId = 'book_' + Date.now();
-  console.log('Schreibe nach Firebase, ID:', newId);
+  var newId = 'book_' + Date.now();
+  console.log('Schreibe nach Firebase, Pfad: users/' + user.uid + '/books/' + newId);
 
-  const emptySections = {
+  var db = firebase.database();
+  var emptySections = {
     ein: { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: {} },
     aus: { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: {} },
     bud: { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: {} },
     spa: { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: {} }
   };
-  const lastEdited = new Date().toISOString();
+  var lastEdited = new Date().toISOString();
 
   db.ref('users/' + user.uid + '/books/' + newId).set({
     _v: DATA_VER, checks: {}, data: emptySections
@@ -2074,13 +2065,17 @@ function saveNewBook() {
     renderHome();
   })
   .catch(function(e) {
-    console.error('❌ saveNewBook Fehler:', e.code, e.message);
-    _hmShowError('Fehler: ' + e.message);
+    console.error('❌ Fehler:', e.code, e.message);
+    errEl.textContent = 'Fehler: ' + e.message;
+    errEl.style.display = 'block';
   })
   .finally(function() {
-    if (btn) { btn.disabled = false; btn.textContent = 'Erstellen'; }
+    btn.disabled = false;
+    btn.textContent = 'Erstellen';
   });
 }
+
+function saveNewBook() { doCreateBook(); }
 
 // ═══════════════════════════════════════
 // COLLAPSE
@@ -2829,26 +2824,22 @@ auth.onAuthStateChanged(async user => {
 </div>
 </div>
 <!-- ── Home: New Book Modal ── -->
-<div class="hm-backdrop" id="hm-backdrop" onclick="closeHomeModal()"></div>
-<div class="hm-modal" id="hm-modal">
-  <div class="hm-title">Neues Budget Plan</div>
-  <div class="hm-mode-sel">
-    <button type="button" class="hm-mode-btn active" id="hm-mode-new" onclick="setHomeMode('new')">Neu erstellen</button>
-    <button type="button" class="hm-mode-btn" id="hm-mode-copy" onclick="setHomeMode('copy')">Kopieren von …</button>
-  </div>
-  <div class="hm-field">
-    <label>Name</label>
-    <input class="hm-input" id="hm-name" type="text" placeholder="z.B. 2027"
-      onkeydown="if(event.key==='Enter')saveNewBook();if(event.key==='Escape')closeHomeModal()">
-  </div>
-  <div class="hm-field hidden" id="hm-source-field">
-    <label>Kopieren von</label>
-    <select class="hm-select" id="hm-source"></select>
-  </div>
-  <div class="hm-error hidden" id="hm-error"></div>
-  <div class="hm-actions">
-    <button type="button" class="hm-cancel" onclick="closeHomeModal()">Abbrechen</button>
-    <button type="button" class="hm-save" id="hm-save-btn" onclick="saveNewBook()">Erstellen</button>
+<div id="home-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px 24px;width:min(360px,90vw);box-shadow:0 8px 40px rgba(0,0,0,.18);" onclick="event.stopPropagation()">
+    <div style="font-size:18px;font-weight:700;color:#1c1c1e;margin-bottom:18px;">Neues Budget Plan</div>
+    <input type="text" id="new-book-name" placeholder="z.B. 2027"
+      style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e5e5ea;border-radius:10px;font-size:15px;font-family:inherit;outline:none;margin-bottom:12px;">
+    <div id="new-book-error" style="display:none;color:#ff3b30;font-size:13px;margin-bottom:10px;padding:8px 12px;background:rgba(255,59,48,.08);border-radius:8px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button type="button" id="btn-cancel-modal"
+        style="flex:1;padding:12px;border:none;border-radius:10px;background:#f2f2f7;color:#636366;font-size:15px;font-family:inherit;font-weight:600;cursor:pointer;">
+        Abbrechen
+      </button>
+      <button type="button" id="btn-create-book"
+        style="flex:1;padding:12px;border:none;border-radius:10px;background:#007aff;color:#fff;font-size:15px;font-family:inherit;font-weight:600;cursor:pointer;">
+        Erstellen
+      </button>
+    </div>
   </div>
 </div>
 <!-- ── Month-Copy Popup ── -->
