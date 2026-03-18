@@ -2788,8 +2788,8 @@ auth.onAuthStateChanged(async user => {
 <div class="hm-modal" id="hm-modal">
   <div class="hm-title">Neues Budget Plan</div>
   <div class="hm-mode-sel">
-    <button class="hm-mode-btn active" id="hm-mode-new" onclick="setHomeMode('new')">Neu erstellen</button>
-    <button class="hm-mode-btn" id="hm-mode-copy" onclick="setHomeMode('copy')">Kopieren von …</button>
+    <button type="button" class="hm-mode-btn active" id="hm-mode-new" onclick="setHomeMode('new')">Neu erstellen</button>
+    <button type="button" class="hm-mode-btn" id="hm-mode-copy" onclick="setHomeMode('copy')">Kopieren von …</button>
   </div>
   <div class="hm-field">
     <label>Name</label>
@@ -2801,13 +2801,13 @@ auth.onAuthStateChanged(async user => {
     <select class="hm-select" id="hm-source"></select>
   </div>
   <div class="hm-actions">
-    <button class="hm-cancel" onclick="closeHomeModal()">Abbrechen</button>
-    <button class="hm-save" onclick="saveNewBook()">Erstellen</button>
+    <button type="button" class="hm-cancel" onclick="closeHomeModal()">Abbrechen</button>
+    <button type="button" class="hm-save" onclick="saveNewBook()">Erstellen</button>
   </div>
 </div>
 <!-- ── Month-Copy Popup ── -->
 <div class="mc-backdrop" id="mc-backdrop" onclick="closeMC(true)"></div>
-<div class="mc-sheet" id="mc-sheet">
+<div class="mc-sheet" id="mc-sheet" onclick="event.stopPropagation()">
   <div class="mc-handle"></div>
   <div class="mc-inner">
     <div class="mc-title">Änderung übernehmen für …</div>
@@ -2844,8 +2844,8 @@ auth.onAuthStateChanged(async user => {
     </div>
     <div class="mc-month-grid" id="mc-month-grid"></div>
     <div class="mc-actions">
-      <button class="mc-btn-confirm" onclick="applyMC()">Übernehmen</button>
-      <button class="mc-btn-cancel" onclick="closeMC(true)">Abbrechen</button>
+      <button type="button" class="mc-btn-confirm" onclick="event.preventDefault();event.stopPropagation();applyMC()">Übernehmen</button>
+      <button type="button" class="mc-btn-cancel" onclick="event.preventDefault();event.stopPropagation();closeMC(true)">Abbrechen</button>
     </div>
   </div>
 </div>
