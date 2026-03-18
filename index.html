@@ -926,6 +926,10 @@ tr.drag-over-bottom td{border-bottom:2px solid #007AFF!important}
             <option value="item">Unterkategorie</option>
           </select>
         </div>
+        <div id="panel-kategorie-wrapper" style="display:none">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">KATEGORIE</label>
+          <select id="panel-kategorie" style="padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;min-width:160px;font-family:inherit;background:#fff;outline:none"></select>
+        </div>
         <div style="flex:1;min-width:160px">
           <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">NAME</label>
           <input type="text" id="panel-name" placeholder="Name eingeben"
@@ -1580,6 +1584,10 @@ function colorToClass(hex) {
 
 function panelOpen() {
   document.getElementById('add-panel').style.display = 'block';
+  document.getElementById('panel-typ').value = 'grp';
+  document.getElementById('panel-kategorie-wrapper').style.display = 'none';
+  document.getElementById('panel-name').value = '';
+  document.getElementById('panel-name').style.borderColor = '';
   document.getElementById('panel-name').focus();
 }
 
@@ -1587,15 +1595,44 @@ function panelClose() {
   document.getElementById('add-panel').style.display = 'none';
   document.getElementById('panel-name').value = '';
   document.getElementById('panel-name').style.borderColor = '';
+  document.getElementById('panel-typ').value = 'grp';
+  document.getElementById('panel-kategorie-wrapper').style.display = 'none';
 }
 
-function addItemToData(secId, typ, name) {
+function updateKategorieDropdown() {
+  var secId  = document.getElementById('panel-sektion').value;
+  var select = document.getElementById('panel-kategorie');
+  var sec    = appData.find(function(x) { return x.id === secId; });
+  select.innerHTML = '';
+  if (sec) {
+    sec.groups.filter(function(g) { return g.label; }).forEach(function(g) {
+      var opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.label;
+      select.appendChild(opt);
+    });
+  }
+}
+
+document.getElementById('panel-typ').addEventListener('change', function() {
+  var isItem = this.value === 'item';
+  document.getElementById('panel-kategorie-wrapper').style.display = isItem ? 'block' : 'none';
+  if (isItem) updateKategorieDropdown();
+});
+
+document.getElementById('panel-sektion').addEventListener('change', function() {
+  if (document.getElementById('panel-typ').value === 'item') updateKategorieDropdown();
+});
+
+function addItemToData(secId, typ, name, grpId) {
   var sec = appData.find(function(x) { return x.id === secId; });
   if (!sec) return;
   if (typ === 'grp') {
     sec.groups.push({id:'grp_'+Date.now(), label:name, color:sec.color, items:[]});
   } else {
-    var grp = sec.groups.find(function(g) { return g.label; });
+    var grp = grpId
+      ? sec.groups.find(function(g) { return g.id === grpId; })
+      : sec.groups.find(function(g) { return g.label; });
     if (!grp) {
       grp = {id:'grp_'+Date.now(), label:sec.label, color:sec.color, items:[]};
       sec.groups.push(grp);
@@ -1612,7 +1649,8 @@ function panelSave() {
   }
   var secId = document.getElementById('panel-sektion').value;
   var typ   = document.getElementById('panel-typ').value;
-  addItemToData(secId, typ, name);
+  var grpId = typ === 'item' ? document.getElementById('panel-kategorie').value : null;
+  addItemToData(secId, typ, name, grpId);
   panelClose();
   renderTable();
   saveData();
