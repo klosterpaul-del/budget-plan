@@ -2095,12 +2095,12 @@ function doCreateBook() {
   } else {
     dataPromise = Promise.resolve({
       _v: DATA_VER, checks: {},
-      data: {
-        ein: { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: {} },
-        aus: { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: {} },
-        bud: { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: {} },
-        spa: { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: {} }
-      }
+      data: [
+        { id:'ein', label:'Einnahmen', cls:'s-ein', color:'#30d158', groups: [] },
+        { id:'aus', label:'Ausgaben',  cls:'s-aus', color:'#ff3b30', groups: [] },
+        { id:'bud', label:'Budget',    cls:'s-bud', color:'#bf5af2', groups: [] },
+        { id:'spa', label:'Sparen',    cls:'s-spa', color:'#0a84ff', groups: [] }
+      ]
     });
   }
 
