@@ -2114,9 +2114,7 @@ function doCreateBook() {
     });
   })
   .then(function() {
-    _booksCache.push({id: newId, name: name, lastEdited: lastEdited, totals: {ein:0, aus:0}});
     closeHomeModal();
-    renderHome();
   })
   .catch(function(e) {
     console.error('doCreateBook error:', e.code, e.message);
