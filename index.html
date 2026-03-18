@@ -1584,6 +1584,7 @@ function colorToClass(hex) {
 function panelOpen() {
   document.getElementById('add-panel').style.display = 'block';
   document.getElementById('panel-sektion').value = 'aus';
+  document.getElementById('panel-typ').querySelector('option[value="grp"]').disabled = false;
   document.getElementById('panel-typ').value = 'grp';
   document.getElementById('panel-kategorie-wrapper').style.display = 'none';
   document.getElementById('panel-name').value = '';
@@ -1632,7 +1633,18 @@ function onTypChange() {
 }
 
 function onSektionChange() {
-  if (document.getElementById('panel-typ').value === 'item') updateKategorieDropdown();
+  var typSelect = document.getElementById('panel-typ');
+  var grpOpt = typSelect.querySelector('option[value="grp"]');
+  if (document.getElementById('panel-sektion').value === 'ein') {
+    typSelect.value = 'item';
+    grpOpt.disabled = true;
+  } else {
+    grpOpt.disabled = false;
+    if (typSelect.value === 'item') {/* keep as item if user had it selected */}
+  }
+  var isItem = typSelect.value === 'item';
+  document.getElementById('panel-kategorie-wrapper').style.display = isItem ? 'block' : 'none';
+  if (isItem) updateKategorieDropdown();
 }
 
 function addItemToData(secId, typ, name, grpId) {
