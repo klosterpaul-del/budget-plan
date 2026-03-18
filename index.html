@@ -460,11 +460,11 @@ tr.rs:hover .del-sec-btn{display:block}
   width:min(460px,100vw);
   background:#fff;border-radius:16px 16px 0 0;
   box-shadow:0 8px 40px rgba(0,0,0,.15);
-  z-index:601;
+  z-index:601;pointer-events:none;
   transition:transform .3s cubic-bezier(.34,1.56,.64,1);
   max-height:90vh;overflow-y:auto;
 }
-.mc-sheet.open{transform:translateX(-50%) translateY(0)}
+.mc-sheet.open{transform:translateX(-50%) translateY(0);pointer-events:auto}
 .mc-handle{width:36px;height:4px;border-radius:2px;background:#e5e5ea;margin:12px auto 4px}
 .mc-inner{padding:12px 20px 32px}
 .mc-title{font-size:17px;font-weight:700;color:#1c1c1e;text-align:center;margin-bottom:4px}
@@ -1727,10 +1727,11 @@ function showAppView(bookId) {
         ...sec,
         groups: sec.groups.map(grp => ({
           ...grp,
-          items: grp.items.map(it => ({
-            ...it,
-            v: Array.isArray(it.v) ? it.v : Object.values(it.v || {})
-          }))
+          items: grp.items.map(it => {
+            const arr = Array.isArray(it.v) ? it.v.slice() : Object.values(it.v || {});
+            while (arr.length < 12) arr.push(0);
+            return {...it, v: arr.slice(0, 12)};
+          })
         }))
       }));
       checkState = val.checks || {};
