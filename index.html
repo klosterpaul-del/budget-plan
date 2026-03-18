@@ -1596,14 +1596,27 @@ var WZ_SECS = [
 
 function openAddModal() {
   _wzSec = null; _wzType = null;
-  var ov = document.getElementById('wizard-overlay');
+  var old = document.getElementById('wizard-overlay');
+  if (old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = 'wizard-overlay';
+  ov.setAttribute('style', 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;');
+  ov.addEventListener('click', function(e) { if (e.target === ov) closeAddModal(); });
+  var box = document.createElement('div');
+  box.id = 'wizard-box';
+  box.setAttribute('style', 'background:#fff;border-radius:16px;padding:28px 24px 24px;width:min(360px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.2);');
+  box.addEventListener('click', function(e) { e.stopPropagation(); });
+  var content = document.createElement('div');
+  content.id = 'wizard-content';
+  box.appendChild(content);
+  ov.appendChild(box);
   document.body.appendChild(ov);
-  ov.style.display = 'flex';
   wzStep1();
 }
 
 function closeAddModal() {
-  document.getElementById('wizard-overlay').style.display = 'none';
+  var ov = document.getElementById('wizard-overlay');
+  if (ov) ov.remove();
   document.body.style.overflow = '';
 }
 
@@ -2717,12 +2730,7 @@ auth.onAuthStateChanged(async user => {
   }
 });
 </script>
-<!-- ── Add Wizard ── -->
-<div id="wizard-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeAddModal()">
-  <div id="wizard-box" style="background:#fff;border-radius:16px;padding:28px 24px 24px;width:min(360px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.2);" onclick="event.stopPropagation()">
-    <div id="wizard-content"></div>
-  </div>
-</div>
+<!-- wizard-overlay created dynamically in openAddModal() -->
 <!-- ── Home: New Book Modal ── -->
 <div id="home-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:28px 24px 24px;width:min(380px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.18);" onclick="event.stopPropagation()">
