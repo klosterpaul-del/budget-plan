@@ -712,8 +712,7 @@ tr.drag-over-bottom td{border-bottom:2px solid #007AFF!important}
 @media(max-width:700px){.kpi-row{grid-template-columns:repeat(2,1fr)}.content{padding:14px 14px}}
 
 /* ── Home Screen ─────────────────────────────────── */
-#view-home{background:var(--bg);min-height:100vh;display:none}
-#view-app{display:none}
+#view-home{background:var(--bg);min-height:100vh}
 .home-content{padding:20px 24px;max-width:1200px;margin:0 auto}
 .home-hdr{margin-bottom:24px;padding-top:4px}
 .home-hdr h1{font-size:28px;font-weight:700;letter-spacing:-.03em;color:var(--t1);margin-bottom:4px}
@@ -1830,8 +1829,8 @@ function showAppView(bookId) {
   document.getElementById('hdr-book-name').textContent = book ? book.name : '';
   document.getElementById('back-btn').classList.remove('hidden');
   document.querySelectorAll('.app-only').forEach(el => el.classList.remove('hidden'));
-  document.getElementById('view-home').style.display = 'none';
-  document.getElementById('view-app').style.display = 'block';
+  document.getElementById('view-home').classList.add('hidden');
+  document.getElementById('view-app').classList.remove('hidden');
 
   // Real-time listener for book data + checks
   _bookDataListener = _bookRef(bookId).on('value', snap => {
@@ -1854,8 +1853,8 @@ function backToHome() {
     rtdb.ref('users/' + currentUser.uid + '/books/' + currentBookId).off('value', _bookDataListener);
     _bookDataListener = null;
   }
-  document.getElementById('view-home').style.display = 'block';
-  document.getElementById('view-app').style.display = 'none';
+  document.getElementById('view-home').classList.remove('hidden');
+  document.getElementById('view-app').classList.add('hidden');
   document.getElementById('back-btn').classList.add('hidden');
   document.querySelectorAll('.app-only').forEach(el => el.classList.add('hidden'));
   document.getElementById('hdr-book-name').textContent = 'Übersicht';
@@ -2660,8 +2659,8 @@ auth.onAuthStateChanged(async user => {
     migrateLocalToFirebase().catch(e => console.warn('Migration error:', e));
 
     // Show home immediately
-    document.getElementById('view-home').style.display = 'block';
-    document.getElementById('view-app').style.display = 'none';
+    document.getElementById('view-home').classList.remove('hidden');
+    document.getElementById('view-app').classList.add('hidden');
 
     // Listen to books index in real-time
     _indexRef().on('value', snap => {
@@ -2716,8 +2715,8 @@ auth.onAuthStateChanged(async user => {
     currentUser = null;
     // Show login screen
     document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('view-home').style.display = 'none';
-    document.getElementById('view-app').style.display = 'none';
+    document.getElementById('view-home').classList.add('hidden');
+    document.getElementById('view-app').classList.add('hidden');
     document.getElementById('auth-email').classList.add('hidden');
     document.getElementById('btn-logout').classList.add('hidden');
   }
