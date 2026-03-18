@@ -1085,19 +1085,18 @@ function saveChecks() {
 function ckKey(sec, grp, itm, m) { return `${sec}_${grp}_${itm}_${m}`; }
 function isCked(sec, grp, itm, m) { return !!checkState[ckKey(sec,grp,itm,m)]; }
 
-// Frei (aktuell) = Einnahmen − nur bereits abgebuchte Posten
+// Noch zu zahlen = Summe aller UNGETICKTEN Posten in Ausgaben, Budget, Sparen
 function freiAktuellArr() {
-  const e = secTotals('ein');
-  return e.map((ev,m) => {
-    let deducted = 0;
+  return Array.from({length:12}, (_,m) => {
+    let total = 0;
     for (const sid of ['aus','bud','spa']) {
       const sec = appData.find(s=>s.id===sid);
       if (!sec) continue;
       sec.groups.forEach(g => g.items.forEach(it => {
-        if (isCked(sid, g.id, it.id, m)) deducted += it.v[m] || 0;
+        if (!isCked(sid, g.id, it.id, m)) total += it.v[m] || 0;
       }));
     }
-    return ev - deducted;
+    return total;
   });
 }
 
@@ -1114,15 +1113,15 @@ function updateFreiRows() {
   const f  = freiArr();
   const fa = freiAktuellArr();
   const fy = sum(f), fay = sum(fa);
-  // Aktuell row
+  // Noch zu zahlen row (höher = schlechter → rot; null = grün)
   fa.forEach((v,i) => {
     const c = document.getElementById(`frei-a-${i}`);
-    if (c) { c.textContent = fmt(v,true); c.style.color = v>=0?'var(--orange)':'var(--red)'; }
+    if (c) { c.textContent = fmt(v,true); c.style.color = v>0?'var(--red)':'var(--green)'; }
   });
   const cay = document.getElementById('frei-a-y');
-  if (cay) { cay.textContent = fmt(fay,true); cay.style.color = fay>=0?'var(--orange)':'var(--red)'; }
+  if (cay) { cay.textContent = fmt(fay,true); cay.style.color = fay>0?'var(--red)':'var(--green)'; }
   const lbla = document.getElementById('frei-a-lbl');
-  if (lbla) lbla.style.color = fay>=0?'var(--orange)':'var(--red)';
+  if (lbla) lbla.style.color = fay>0?'var(--red)':'var(--green)';
   // Total row
   f.forEach((v,i) => {
     const c = document.getElementById(`frei-t-${i}`);
@@ -1347,10 +1346,10 @@ function renderTable() {
 
   // Frei aktuell (nur geticked) — in tfoot (sticky bottom)
   const fa = freiAktuellArr();
-  const fay = sum(fa), faC = fay>=0?'var(--orange)':'var(--red)';
+  const fay = sum(fa), faC = fay>0?'var(--red)':'var(--green)';
   let fhtml = `<tr class="rsum rfrei-a">
-    <td id="frei-a-lbl" style="color:${faC}">🟡&nbsp; Frei verfügbar (aktuell)</td>`;
-  fa.forEach((v,i) => fhtml += `<td id="frei-a-${i}" style="color:${v>=0?'var(--orange)':'var(--red)'}">${fmt(v,true)}</td>`);
+    <td id="frei-a-lbl" style="color:${faC}">⏳&nbsp; Noch zu zahlen</td>`;
+  fa.forEach((v,i) => fhtml += `<td id="frei-a-${i}" style="color:${v>0?'var(--red)':'var(--green)'}">${fmt(v,true)}</td>`);
   fhtml += `<td id="frei-a-y" style="color:${faC}">${fmt(fay,true)}</td></tr>`;
   // Frei total (alle Ausgaben)
   const fy=sum(f), fc=fy>=0?'var(--green)':'var(--red)';
@@ -1409,7 +1408,7 @@ function updateKPIStrip() {
     {lbl:'Ausgaben',            val:ay,  c:'var(--red)'},
     {lbl:'Budget',              val:by,  c:'var(--purple)'},
     {lbl:'Sparen',              val:spy, c:'var(--blue)'},
-    {lbl:'🟡 Frei (aktuell)',   val:fay, c:fay>=0?'var(--orange)':'var(--red)'},
+    {lbl:'⏳ Noch zu zahlen',   val:fay, c:fay>0?'var(--red)':'var(--green)'},
     {lbl:'✅ Frei (total)',     val:fy,  c:fy>=0?'var(--green)':'var(--red)'},
   ];
   el.innerHTML = items.map(k=>`
