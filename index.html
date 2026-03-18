@@ -2009,6 +2009,9 @@ function openHomeModal() {
 
 function closeHomeModal() {
   document.getElementById('home-modal').style.display = 'none';
+  _isSaving = false;
+  var btn = document.getElementById('btn-create-book');
+  if (btn) { btn.disabled = false; btn.textContent = 'Erstellen'; }
 }
 
 function _setHmMode(mode) {
@@ -2037,10 +2040,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.key === 'Enter') doCreateBook();
     if (e.key === 'Escape') closeHomeModal();
   });
-  document.getElementById('btn-create-book').addEventListener('click', doCreateBook);
+  var _createBtn = document.getElementById('btn-create-book');
+  var _newBtn = _createBtn.cloneNode(true);
+  _createBtn.parentNode.replaceChild(_newBtn, _createBtn);
+  _newBtn.addEventListener('click', doCreateBook);
 });
 
+var _isSaving = false;
+
 function doCreateBook() {
+  if (_isSaving) return;
+
   var errEl = document.getElementById('new-book-error');
   errEl.style.display = 'none';
 
@@ -2050,7 +2060,7 @@ function doCreateBook() {
   var name = document.getElementById('new-book-name').value.trim();
   if (!name) { document.getElementById('new-book-name').focus(); return; }
 
-  // Disable button immediately to prevent double-submit
+  _isSaving = true;
   var btn = document.getElementById('btn-create-book');
   btn.disabled = true;
   btn.textContent = 'Wird erstellt…';
@@ -2114,6 +2124,7 @@ function doCreateBook() {
     errEl.style.display = 'block';
     btn.disabled = false;
     btn.textContent = 'Erstellen';
+    _isSaving = false;
   });
 }
 
