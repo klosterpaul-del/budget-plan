@@ -914,7 +914,7 @@ tr.drag-over-bottom td{border-bottom:2px solid #007AFF!important}
           <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">SEKTION</label>
           <select id="panel-sektion" onchange="onSektionChange()" style="padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;min-width:130px;font-family:inherit;background:#fff;outline:none">
             <option value="ein">Einnahmen</option>
-            <option value="aus">Ausgaben</option>
+            <option value="aus" selected>Ausgaben</option>
             <option value="bud">Budget</option>
             <option value="spa">Sparen</option>
           </select>
@@ -1583,6 +1583,7 @@ function colorToClass(hex) {
 
 function panelOpen() {
   document.getElementById('add-panel').style.display = 'block';
+  document.getElementById('panel-sektion').value = 'aus';
   document.getElementById('panel-typ').value = 'grp';
   document.getElementById('panel-kategorie-wrapper').style.display = 'none';
   document.getElementById('panel-name').value = '';
