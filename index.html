@@ -1647,27 +1647,13 @@ function wzPickType(type) {
 }
 
 function wzStep3() {
-  var catHtml = '';
-  if (_wzType === 'item') {
-    var sec = appData.find(function(x) { return x.id === _wzSec; });
-    var groups = sec ? sec.groups.filter(function(g) { return g.label; }) : [];
-    catHtml = groups.length
-      ? groups.map(function(g) { return '<option value="' + g.id + '">' + escHtml(g.label) + '</option>'; }).join('')
-      : '<option value="">— Keine Kategorien —</option>';
-  }
-
   var html = '<h3 style="margin:0 0 20px;text-align:center;font-size:17px;font-weight:700;color:#1c1c1e">Details eingeben</h3>';
-  html += '<div style="margin-bottom:12px">'
+  html += '<div style="margin-bottom:16px">'
         + '<label style="display:block;font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Name</label>'
         + '<input type="text" id="wz-name-inp" placeholder="Name eingeben …" '
         + 'style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e5e5ea;border-radius:10px;font-size:15px;font-family:inherit;outline:none" '
         + 'onkeydown="if(event.key===\'Enter\')wzSave();if(event.key===\'Escape\')closeAddModal()"></div>';
-  if (_wzType === 'item') {
-    html += '<div style="margin-bottom:16px">'
-          + '<label style="display:block;font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Kategorie</label>'
-          + '<select id="wz-cat-sel" class="wz-select">' + catHtml + '</select></div>';
-  }
-  html += '<div style="display:flex;gap:8px;margin-top:4px">';
+  html += '<div style="display:flex;gap:8px">';
   html += '<button onclick="wzStep2()" style="flex:1;padding:11px;border:1.5px solid #e5e5ea;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#636366">← Zurück</button>';
   html += '<button onclick="wzSave()" style="flex:2;padding:11px;border:none;border-radius:10px;background:#007AFF;color:#fff;cursor:pointer;font-size:14px;font-family:inherit;font-weight:600">✓ Hinzufügen</button>';
   html += '</div>';
@@ -1686,10 +1672,11 @@ function wzSave() {
   if (_wzType === 'grp') {
     sec.groups.push({id: 'grp_' + Date.now(), label: name, color: sec.color, items: []});
   } else if (_wzType === 'item') {
-    var catEl = document.getElementById('wz-cat-sel');
-    var gid = catEl ? catEl.value : '';
-    var grp = sec.groups.find(function(g) { return g.id === gid; });
-    if (!grp) return;
+    var grp = sec.groups.find(function(g) { return g.label; });
+    if (!grp) {
+      grp = {id: 'grp_' + Date.now(), label: sec.label, color: sec.color, items: []};
+      sec.groups.push(grp);
+    }
     grp.items.push({id: 'item_' + Date.now(), name: name, v: new Array(12).fill(0)});
   }
 
