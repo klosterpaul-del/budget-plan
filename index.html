@@ -189,13 +189,13 @@ th:first-child{
 }
 th:last-child{
   color:var(--blue);letter-spacing:.04em;
-  background:#f7f7f9;
-  border-left:1px solid var(--sep);
+  background:rgba(0,0,0,.04);
+  border-left:1px solid #e8e8e8;
 }
 
 /* Basis für ALLE Zellen — Zahlen rechts, Label links */
 td{
-  padding:5px 5px;
+  padding:10px 12px;
   text-align:right;
   border-bottom:1px solid var(--sep-s);
   white-space:nowrap;
@@ -208,7 +208,7 @@ td{
 /* Erste Spalte: Label, linksbündig, sticky left, eingefroren */
 td:first-child{
   text-align:left;
-  padding:5px 6px 5px 12px;
+  padding:10px 6px 10px 12px;
   position:sticky;left:0;z-index:2;
   background:#ffffff;
   font-variant-numeric:normal;
@@ -221,12 +221,16 @@ td:first-child{
 td:last-child{
   font-weight:600;color:var(--blue);
   text-align:right;
-  border-left:1px solid var(--sep-s);
+  background:rgba(0,0,0,.02);
+  border-left:1px solid #e8e8e8;
 }
+
+/* ── General Hover + Transition ─────────────────── */
+tbody tr:hover td{background:rgba(0,122,255,.04);transition:background .15s ease}
 
 /* ── Section Rows ────────────────────────────────── */
 .rs{cursor:pointer;user-select:none}
-.rs td{padding-top:7px;padding-bottom:7px;font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+.rs td{padding:12px 12px;font-weight:700;font-size:12px;letter-spacing:.5px;text-transform:uppercase}
 .rs td:first-child{padding-left:12px}
 
 .s-ein td{background:rgba(52,199,89,.12);color:var(--green)}
@@ -251,7 +255,7 @@ td:last-child{
 
 /* ── Group Rows ──────────────────────────────────── */
 .rg{cursor:pointer;user-select:none}
-.rg td{color:var(--t1);font-weight:600;font-size:12.5px;padding-top:5px;padding-bottom:5px}
+.rg td{color:#444;font-weight:600;font-size:13px;background:#f0f0f0}
 .rg td:first-child{padding-left:24px;position:sticky;left:0}
 /* section-tinted group backgrounds (half the section alpha) */
 .rg[data-sec="ein"] td{background:rgba(52,199,89,.06)}
