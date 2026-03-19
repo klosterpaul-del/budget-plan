@@ -2805,8 +2805,16 @@ auth.onAuthStateChanged(async user => {
       const entries = Object.values(raw);
       console.log('Index snapshot — entries:', entries.length, entries.map(e => e.id));
 
-      _booksCache = entries
-        .map(e => ({...e, totals: e.totals || {ein:0, aus:0}}))
+      // Deduplicate: if both 'book_xxx' and 'shared_book_xxx' exist (old + new mechanism),
+      // keep only the entry with sharedBy set (prefer shared over own copy)
+      const canonMap = new Map();
+      entries.map(e => ({...e, totals: e.totals || {ein:0, aus:0}})).forEach(e => {
+        const canon = e.id.replace(/^shared_/, '');
+        if (!canonMap.has(canon) || (e.sharedBy && !canonMap.get(canon).sharedBy)) {
+          canonMap.set(canon, e);
+        }
+      });
+      _booksCache = Array.from(canonMap.values())
         .sort((a,b) => (b.lastEdited||'').localeCompare(a.lastEdited||''));
 
       // Render immediately with placeholder totals
