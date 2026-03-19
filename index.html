@@ -1197,10 +1197,11 @@ const auth = firebase.auth();
 const rtdb  = firebase.database();
 
 // ── App State ──
-let currentUser      = null;   // firebase.User
-let _bookDataListener = null;  // unsubscribe handle for .on('value')
-let _booksCache      = [];     // [{id,name,lastEdited,sharedBy?}]
-let _shareBookId     = null;   // book currently in share modal
+let currentUser           = null;   // firebase.User
+let _bookDataListener     = null;   // unsubscribe handle for .on('value')
+let _booksCache           = [];     // [{id,name,lastEdited,sharedBy?}]
+let _shareBookId          = null;   // book currently in share modal
+let _currentBookIsShared  = false;  // true when the open book lives in /shared/
 
 // ── Auth helpers ──
 function _userRef()       { return rtdb.ref('users/' + currentUser.uid); }
@@ -1208,9 +1209,9 @@ function _bookRef(id)     { return rtdb.ref('users/' + currentUser.uid + '/books
 function _indexRef()      { return rtdb.ref('users/' + currentUser.uid + '/index'); }
 function _sharedRef(id)   { return rtdb.ref('shared/' + id); }
 function _emailToUid(em)  { return rtdb.ref('emailToUid/' + em.replace(/\./g,'_')); }
-// For shared books, live data lives in /shared/{origId}/data — same structure as users/.../books/{id}
+// For shared books, live data lives in /shared/{bookId}/data — same structure as users/.../books/{id}
 function _activeBookDataRef(id) {
-  if (id && id.startsWith('shared_')) return rtdb.ref('shared/' + id.replace(/^shared_/, '') + '/data');
+  if (_currentBookIsShared) return rtdb.ref('shared/' + id + '/data');
   return _bookRef(id);
 }
 
@@ -1251,13 +1252,12 @@ function saveData() {
   saveTimer = setTimeout(async () => {
     if (!currentBookId || !currentUser) return;
     console.log('[saveData] currentBookId:', currentBookId);
-    console.log('[saveData] isShared:', currentBookId.startsWith('shared_'));
+    console.log('[saveData] _currentBookIsShared:', _currentBookIsShared);
     console.log('[saveData] activeBookDataRef path:', _activeBookDataRef(currentBookId).toString());
     try {
-      if (currentBookId.startsWith('shared_')) {
-        // Shared book: write to /shared/{origId}/data/data so all members see it
-        const origId = currentBookId.replace(/^shared_/, '');
-        const writePath = 'shared/' + origId + '/data/data';
+      if (_currentBookIsShared) {
+        // Shared book: write to /shared/{bookId}/data/data so all members see it live
+        const writePath = 'shared/' + currentBookId + '/data/data';
         console.log('[saveData] writing shared data to:', writePath);
         await rtdb.ref(writePath).set(appData);
       } else {
@@ -1750,13 +1750,14 @@ function panelSave() {
 // HOME SCREEN
 // ═══════════════════════════════════════
 
-function showAppView(bookId) {
+function showAppView(bookId, isShared) {
   // Detach any previous listener
   if (_bookDataListener) {
     _activeBookDataRef(currentBookId).off('value', _bookDataListener);
     _bookDataListener = null;
   }
   currentBookId = bookId;
+  _currentBookIsShared = !!isShared;
 
   const book = _booksCache.find(b => b.id === bookId);
   document.getElementById('hdr-book-name').textContent = book ? book.name : '';
@@ -1765,8 +1766,6 @@ function showAppView(bookId) {
   document.getElementById('view-home').classList.add('hidden');
   document.getElementById('view-app').classList.remove('hidden');
 
-  // For shared books: load per-user checks from own copy (not from /shared)
-  const isShared = bookId.startsWith('shared_');
   if (isShared) {
     _bookRef(bookId).child('checks').once('value').then(cs => { checkState = cs.val() || {}; });
   }
@@ -1820,6 +1819,7 @@ function backToHome() {
     _activeBookDataRef(currentBookId).off('value', _bookDataListener);
     _bookDataListener = null;
   }
+  _currentBookIsShared = false;
   document.getElementById('view-home').classList.remove('hidden');
   document.getElementById('view-app').classList.add('hidden');
   document.getElementById('back-btn').classList.add('hidden');
@@ -1879,7 +1879,15 @@ function handleCardClick(e, bookId) {
   if (e.target.closest('.book-card-actions') || e.target.closest('[contenteditable]')) return;
   const name = document.getElementById('bcname-' + bookId);
   if (name && name.contentEditable === 'true') return;
-  showAppView(bookId);
+  // Fast path: sharedBy in cache or shared_ prefix (legacy)
+  const cached = _booksCache.find(b => b.id === bookId);
+  if ((cached && cached.sharedBy) || bookId.startsWith('shared_')) {
+    showAppView(bookId, true); return;
+  }
+  // Slow path: check Firebase sharedBooks for books not yet marked in cache
+  rtdb.ref('users/' + currentUser.uid + '/sharedBooks/' + bookId).once('value')
+    .then(snap => showAppView(bookId, snap.exists()))
+    .catch(() => showAppView(bookId, false));
 }
 
 function getBookTotals(bookId) {
@@ -2604,6 +2612,7 @@ async function doLogout() {
     _activeBookDataRef(currentBookId).off('value', _bookDataListener);
     _bookDataListener = null;
   }
+  _currentBookIsShared = false;
   await auth.signOut();
 }
 
@@ -2687,53 +2696,52 @@ async function doShare() {
 
 async function resolvePendingShares(user) {
   const encodedEmail = user.email.toLowerCase().replace(/\./g, '_');
-  console.log('[share] resolvePendingShares start — user:', user.email, '| encodedEmail key:', encodedEmail);
+  console.log('[share] resolvePendingShares — user:', user.email, '| encodedEmail:', encodedEmail);
 
-  const [sharedSnap, indexSnap] = await Promise.all([
-    rtdb.ref('shared').once('value'),
+  // Primary: read own sharedBooks list (always accessible, no permission issues)
+  const [sharedBooksSnap, indexSnap] = await Promise.all([
+    rtdb.ref('users/' + user.uid + '/sharedBooks').once('value'),
     _indexRef().once('value')
   ]);
-
-  console.log('[share] /shared/ exists:', sharedSnap.exists(), '| raw:', sharedSnap.val());
-  console.log('[share] own index:', indexSnap.val());
-  rtdb.ref('users/' + user.uid + '/books').once('value').then(s => console.log('[share] own /books/:', s.val()));
-
-  if (!sharedSnap.exists()) return;
+  const knownBookIds = sharedBooksSnap.exists() ? Object.keys(sharedBooksSnap.val()) : [];
   const existingIndex = indexSnap.val() || {};
-  const promises = [];
-  sharedSnap.forEach(child => {
-    const bookId = child.key;
-    const val = child.val();
-    const sharedBookId = 'shared_' + bookId;
-    const hasPending = val.pendingMembers && val.pendingMembers[encodedEmail];
-    const isMember   = val.members && val.members[user.uid];
-    const inIndex    = !!existingIndex[sharedBookId];
-    console.log('[share] book', bookId, '| pendingMembers:', val.pendingMembers, '| hasPending:', hasPending, '| isMember:', isMember, '| inIndex:', inIndex);
-    if (!hasPending && !isMember) return;      // not invited
-    if (isMember && inIndex) return;           // already set up, nothing to do
-    console.log('[share] → copying book', bookId, 'to user index as', sharedBookId);
-    promises.push(
-      rtdb.ref('users/' + user.uid + '/books/' + sharedBookId).set({...(val.data || {}), checks: {}})
-        .then(() => rtdb.ref('users/' + user.uid + '/index/' + sharedBookId).set({
-          id: sharedBookId,
-          name: val.bookName || 'Geteiltes Buch',
-          lastEdited: new Date().toISOString(),
-          sharedBy: val.owner || ''
-        }))
-        .then(() => {
-          const updates = {};
-          if (hasPending) updates['pendingMembers/' + encodedEmail] = null;
-          updates['members/' + user.uid] = true;
-          return Promise.all([
-            rtdb.ref('shared/' + bookId).update(updates),
-            rtdb.ref('users/' + user.uid + '/sharedBooks/' + bookId).set(true)
-          ]);
-        })
-        .then(() => console.log('[share] ✓ book', sharedBookId, 'copied successfully'))
-        .catch(e => console.error('[share] ✗ copy failed for', bookId, e))
-    );
-  });
-  await Promise.all(promises);
+  console.log('[share] sharedBooks entries:', knownBookIds);
+
+  // Secondary: scan /shared/ for email-based pending invites (best-effort)
+  const pendingBookIds = [];
+  try {
+    const sharedSnap = await rtdb.ref('shared').once('value');
+    sharedSnap.forEach(child => {
+      const val = child.val();
+      if (val.pendingMembers && val.pendingMembers[encodedEmail]) pendingBookIds.push(child.key);
+    });
+    // Promote pending → sharedBooks + members
+    await Promise.all(pendingBookIds.map(bookId => Promise.all([
+      rtdb.ref('users/' + user.uid + '/sharedBooks/' + bookId).set(true),
+      rtdb.ref('shared/' + bookId + '/members/' + user.uid).set(true),
+      rtdb.ref('shared/' + bookId + '/pendingMembers/' + encodedEmail).remove()
+    ])));
+  } catch(e) { console.warn('[share] /shared/ scan skipped:', e.message); }
+
+  const allBookIds = [...new Set([...knownBookIds, ...pendingBookIds])];
+  await Promise.all(allBookIds.map(async bookId => {
+    const inIndex = existingIndex[bookId] && existingIndex[bookId].sharedBy;
+    if (inIndex) { console.log('[share] book', bookId, 'already in index — skip'); return; }
+    try {
+      const bookSnap = await rtdb.ref('shared/' + bookId).once('value');
+      if (!bookSnap.exists()) return;
+      const val = bookSnap.val();
+      console.log('[share] → writing', bookId, 'to index with sharedBy:', val.owner);
+      await rtdb.ref('users/' + user.uid + '/books/' + bookId).set({...(val.data || {}), checks: {}});
+      await _indexRef().child(bookId).set({
+        id: bookId,
+        name: val.bookName || 'Geteiltes Buch',
+        lastEdited: new Date().toISOString(),
+        sharedBy: val.owner || 'Geteilt'
+      });
+      console.log('[share] ✓ book', bookId, 'added to index');
+    } catch(e) { console.error('[share] ✗ failed for', bookId, e); }
+  }));
 }
 
 // ═══════════════════════════════════════
@@ -2870,22 +2878,21 @@ auth.onAuthStateChanged(async user => {
       const bookIds = Object.keys(refs);
       if (bookIds.length === 0) return;
       await Promise.all(bookIds.map(async bookId => {
-        const sharedBookId = 'shared_' + bookId;
         try {
           const [sharedSnap, indexSnap] = await Promise.all([
             rtdb.ref('shared/' + bookId).once('value'),
-            _indexRef().child(sharedBookId).once('value')
+            _indexRef().child(bookId).once('value')   // original bookId — no shared_ prefix
           ]);
           if (!sharedSnap.exists()) return;
           const val = sharedSnap.val();
-          if (!indexSnap.exists()) {
-            console.log('[sharedBooks listener] restoring', sharedBookId, 'to index');
-            await rtdb.ref('users/' + user.uid + '/books/' + sharedBookId).set({...(val.data || {}), checks: {}});
-            await _indexRef().child(sharedBookId).set({
-              id: sharedBookId,
+          if (!indexSnap.exists() || !indexSnap.val().sharedBy) {
+            console.log('[sharedBooks listener] adding/restoring', bookId, 'to index');
+            await rtdb.ref('users/' + user.uid + '/books/' + bookId).set({...(val.data || {}), checks: {}});
+            await _indexRef().child(bookId).set({
+              id: bookId,
               name: val.bookName || 'Geteiltes Buch',
               lastEdited: new Date().toISOString(),
-              sharedBy: val.owner || ''
+              sharedBy: val.owner || 'Geteilt'
             });
             // index write triggers _indexRef().on('value') → _booksCache → renderHome()
           }
