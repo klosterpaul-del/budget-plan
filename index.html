@@ -2691,6 +2691,9 @@ auth.onAuthStateChanged(async user => {
       return;
     }
     currentUser = user;
+    // Store email → uid mapping for lookup by other users
+    const emailKey = user.email.toLowerCase().replace(/\./g, '_').replace(/@/g, '_at_');
+    rtdb.ref('emailToUid/' + emailKey).set(user.uid).catch(e => console.warn('emailToUid:', e));
     // Resolve any pending share invitations for this email
     resolvePendingShares(user).catch(e => console.warn('resolvePendingShares:', e));
     // Show app, hide login
