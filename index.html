@@ -319,6 +319,13 @@ tr:hover .cb{opacity:.5}
 tr:hover .cb:checked{opacity:1}
 td[data-hasval="0"] .cb{visibility:hidden;pointer-events:none}
 
+/* ── Section "Select All" Checkbox ──────────────── */
+.sec-all-cb{
+  width:14px;height:14px;flex-shrink:0;
+  accent-color:#007aff;cursor:pointer;margin:0 6px 0 2px;
+  vertical-align:middle;
+}
+
 /* ── Frei verfügbar Zeilen ───────────────────────── */
 .rfrei-a td{
   background:#fffbf0;font-size:11px;font-weight:600;
@@ -1112,6 +1119,36 @@ function onCheck(cb) {
   updateFreiRows();
   updateKPIStrip();
   saveChecks();
+  updateSecAllCb(sec);
+}
+
+function toggleSectionAll(secId, event) {
+  event.stopPropagation();
+  const cbs = document.querySelectorAll(`.cb[data-sec="${secId}"]`);
+  const allChecked = Array.from(cbs).every(cb => cb.checked);
+  cbs.forEach(cb => {
+    const newVal = !allChecked;
+    if (cb.checked !== newVal) {
+      cb.checked = newVal;
+      const key = ckKey(cb.dataset.sec, cb.dataset.grp, cb.dataset.itm, parseInt(cb.dataset.m));
+      if (newVal) checkState[key] = true; else delete checkState[key];
+    }
+  });
+  updateFreiRows();
+  updateKPIStrip();
+  saveChecks();
+  updateSecAllCb(secId);
+}
+
+function updateSecAllCb(secId) {
+  const el = document.getElementById(`sec-cb-${secId}`);
+  if (!el) return;
+  const cbs = Array.from(document.querySelectorAll(`.cb[data-sec="${secId}"]`));
+  if (cbs.length === 0) { el.checked = false; el.indeterminate = false; return; }
+  const checkedCount = cbs.filter(cb => cb.checked).length;
+  if (checkedCount === 0)          { el.checked = false; el.indeterminate = false; }
+  else if (checkedCount === cbs.length) { el.checked = true;  el.indeterminate = false; }
+  else                             { el.checked = false; el.indeterminate = true;  }
 }
 
 function updateFreiRows() {
@@ -1277,7 +1314,8 @@ function renderTable() {
     const st = secTotals(sec.id);
     const isC = colState[sec.id];
     html += `<tr class="rs ${sec.cls||'s-cust'}${isC?' collapsed':''}" id="sr-${sec.id}" onclick="toggleSec('${sec.id}')">
-      <td><i class="ti">▼</i><span class="sec-lbl" onclick="event.stopPropagation()"
+      <td><i class="ti">▼</i>${['aus','bud','spa'].includes(sec.id)?`<input type="checkbox" class="sec-all-cb" id="sec-cb-${sec.id}" onclick="toggleSectionAll('${sec.id}',event)" title="Alle ab/abhaken">`:''}
+        <span class="sec-lbl" onclick="event.stopPropagation()"
         ondblclick="startRenameSec(this,event)" data-sid="${sec.id}">${escHtml(sec.label)}</span>
         <button class="del-sec-btn" title="Sektion löschen" onclick="deleteSec('${sec.id}',event)">×</button></td>`;
     st.forEach(() => html += `<td></td>`);
@@ -1348,6 +1386,7 @@ function renderTable() {
   });
 
   document.getElementById('tbody').innerHTML = html;
+  ['aus','bud','spa'].forEach(id => updateSecAllCb(id));
 
   // Frei aktuell (nur geticked) — in tfoot (sticky bottom)
   const fa = freiAktuellArr();
