@@ -319,11 +319,11 @@ tr:hover .cb{opacity:.5}
 tr:hover .cb:checked{opacity:1}
 td[data-hasval="0"] .cb{visibility:hidden;pointer-events:none}
 
-/* ── Section "Select All" Checkbox ──────────────── */
-.sec-all-cb{
-  width:14px;height:14px;flex-shrink:0;
-  accent-color:#007aff;cursor:pointer;margin:0 6px 0 2px;
-  vertical-align:middle;
+/* ── Section per-Month "Toggle All" Checkbox ─────── */
+.sec-m-cb{
+  width:13px;height:13px;
+  accent-color:#007aff;cursor:pointer;
+  display:block;margin:0 auto;
 }
 
 /* ── Frei verfügbar Zeilen ───────────────────────── */
@@ -1119,12 +1119,12 @@ function onCheck(cb) {
   updateFreiRows();
   updateKPIStrip();
   saveChecks();
-  updateSecAllCb(sec);
+  updateSecMonthCb(sec, parseInt(m));
 }
 
-function toggleSectionAll(secId, event) {
+function toggleSectionMonth(secId, mi, event) {
   event.stopPropagation();
-  const cbs = document.querySelectorAll(`.cb[data-sec="${secId}"]`);
+  const cbs = document.querySelectorAll(`.cb[data-sec="${secId}"][data-m="${mi}"]`);
   const allChecked = Array.from(cbs).every(cb => cb.checked);
   cbs.forEach(cb => {
     const newVal = !allChecked;
@@ -1137,18 +1137,18 @@ function toggleSectionAll(secId, event) {
   updateFreiRows();
   updateKPIStrip();
   saveChecks();
-  updateSecAllCb(secId);
+  updateSecMonthCb(secId, mi);
 }
 
-function updateSecAllCb(secId) {
-  const el = document.getElementById(`sec-cb-${secId}`);
+function updateSecMonthCb(secId, mi) {
+  const el = document.getElementById(`sec-mcb-${secId}-${mi}`);
   if (!el) return;
-  const cbs = Array.from(document.querySelectorAll(`.cb[data-sec="${secId}"]`));
+  const cbs = Array.from(document.querySelectorAll(`.cb[data-sec="${secId}"][data-m="${mi}"]`));
   if (cbs.length === 0) { el.checked = false; el.indeterminate = false; return; }
   const checkedCount = cbs.filter(cb => cb.checked).length;
-  if (checkedCount === 0)          { el.checked = false; el.indeterminate = false; }
+  if (checkedCount === 0)               { el.checked = false; el.indeterminate = false; }
   else if (checkedCount === cbs.length) { el.checked = true;  el.indeterminate = false; }
-  else                             { el.checked = false; el.indeterminate = true;  }
+  else                                  { el.checked = false; el.indeterminate = true;  }
 }
 
 function updateFreiRows() {
@@ -1314,11 +1314,16 @@ function renderTable() {
     const st = secTotals(sec.id);
     const isC = colState[sec.id];
     html += `<tr class="rs ${sec.cls||'s-cust'}${isC?' collapsed':''}" id="sr-${sec.id}" onclick="toggleSec('${sec.id}')">
-      <td><i class="ti">▼</i>${['aus','bud','spa'].includes(sec.id)?`<input type="checkbox" class="sec-all-cb" id="sec-cb-${sec.id}" onclick="toggleSectionAll('${sec.id}',event)" title="Alle ab/abhaken">`:''}
-        <span class="sec-lbl" onclick="event.stopPropagation()"
+      <td><i class="ti">▼</i><span class="sec-lbl" onclick="event.stopPropagation()"
         ondblclick="startRenameSec(this,event)" data-sid="${sec.id}">${escHtml(sec.label)}</span>
         <button class="del-sec-btn" title="Sektion löschen" onclick="deleteSec('${sec.id}',event)">×</button></td>`;
-    st.forEach(() => html += `<td></td>`);
+    st.forEach((v, mi) => {
+      if (['aus','bud','spa'].includes(sec.id)) {
+        html += `<td><input type="checkbox" class="sec-m-cb" id="sec-mcb-${sec.id}-${mi}" onclick="toggleSectionMonth('${sec.id}',${mi},event)" title="Alle ${M[mi]} ab/abhaken"></td>`;
+      } else {
+        html += `<td></td>`;
+      }
+    });
     html += `<td id="st-${sec.id}-y">${fmt(sum(st),true)}</td></tr>`;
 
     for (const grp of sec.groups) {
@@ -1386,7 +1391,7 @@ function renderTable() {
   });
 
   document.getElementById('tbody').innerHTML = html;
-  ['aus','bud','spa'].forEach(id => updateSecAllCb(id));
+  ['aus','bud','spa'].forEach(sid => Array.from({length:12}, (_,mi) => updateSecMonthCb(sid, mi)));
 
   // Frei aktuell (nur geticked) — in tfoot (sticky bottom)
   const fa = freiAktuellArr();
