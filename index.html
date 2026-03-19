@@ -1250,11 +1250,16 @@ function saveData() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     if (!currentBookId || !currentUser) return;
+    console.log('[saveData] currentBookId:', currentBookId);
+    console.log('[saveData] isShared:', currentBookId.startsWith('shared_'));
+    console.log('[saveData] activeBookDataRef path:', _activeBookDataRef(currentBookId).toString());
     try {
       if (currentBookId.startsWith('shared_')) {
         // Shared book: write to /shared/{origId}/data/data so all members see it
         const origId = currentBookId.replace(/^shared_/, '');
-        await rtdb.ref('shared/' + origId + '/data/data').set(appData);
+        const writePath = 'shared/' + origId + '/data/data';
+        console.log('[saveData] writing shared data to:', writePath);
+        await rtdb.ref(writePath).set(appData);
       } else {
         await _bookRef(currentBookId).child('data').set(appData);
         await _indexRef().child(currentBookId).child('lastEdited').set(new Date().toISOString());
@@ -1767,8 +1772,11 @@ function showAppView(bookId) {
   }
 
   // Real-time listener: shared → /shared/{origId}/data, own → users/.../books/{id}
-  _bookDataListener = _activeBookDataRef(bookId).on('value', snap => {
+  const activeRef = _activeBookDataRef(bookId);
+  console.log('[showAppView] bookId:', bookId, '| isShared:', isShared, '| listening on:', activeRef.toString());
+  _bookDataListener = activeRef.on('value', snap => {
     const val = snap.val();
+    console.log('[listener] fired for:', bookId, '| path:', activeRef.toString(), '| has data:', !!(val && val.data));
     if (val && val.data) {
       // Firebase may return objects instead of arrays — normalise to arrays
       const raw = val.data;
