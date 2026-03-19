@@ -2638,6 +2638,20 @@ async function doShare() {
     await sharedRef.child('owner').set(currentUser.email);
     await sharedRef.child('bookName').set(entry ? entry.name : 'Geteiltes Buch');
     await sharedRef.child('pendingMembers/' + encodedEmail).set(true);
+
+    // If invited user already has a UID (has logged in before), link directly
+    const emailKey = email.replace(/\./g, '_').replace(/@/g, '_at_');
+    const uidSnap = await rtdb.ref('emailToUid/' + emailKey).once('value');
+    const invitedUid = uidSnap.val();
+    console.log('[share] emailKey:', emailKey, '| invitedUid:', invitedUid);
+    if (invitedUid) {
+      await Promise.all([
+        rtdb.ref('users/' + invitedUid + '/sharedBooks/' + _shareBookId).set(true),
+        rtdb.ref('shared/' + _shareBookId + '/members/' + invitedUid).set(true)
+      ]);
+      console.log('[share] ✓ linked directly to uid', invitedUid);
+    }
+
     closeShareModal();
     showToast('Einladung gesendet ✓');
   } catch(e) {
