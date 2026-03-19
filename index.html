@@ -2648,10 +2648,17 @@ async function doShare() {
 
 async function resolvePendingShares(user) {
   const encodedEmail = user.email.toLowerCase().replace(/\./g, '_');
+  console.log('[share] resolvePendingShares start — user:', user.email, '| encodedEmail key:', encodedEmail);
+
   const [sharedSnap, indexSnap] = await Promise.all([
     rtdb.ref('shared').once('value'),
     _indexRef().once('value')
   ]);
+
+  console.log('[share] /shared/ exists:', sharedSnap.exists(), '| raw:', sharedSnap.val());
+  console.log('[share] own index:', indexSnap.val());
+  rtdb.ref('users/' + user.uid + '/books').once('value').then(s => console.log('[share] own /books/:', s.val()));
+
   if (!sharedSnap.exists()) return;
   const existingIndex = indexSnap.val() || {};
   const promises = [];
@@ -2662,8 +2669,10 @@ async function resolvePendingShares(user) {
     const hasPending = val.pendingMembers && val.pendingMembers[encodedEmail];
     const isMember   = val.members && val.members[user.uid];
     const inIndex    = !!existingIndex[sharedBookId];
+    console.log('[share] book', bookId, '| pendingMembers:', val.pendingMembers, '| hasPending:', hasPending, '| isMember:', isMember, '| inIndex:', inIndex);
     if (!hasPending && !isMember) return;      // not invited
     if (isMember && inIndex) return;           // already set up, nothing to do
+    console.log('[share] → copying book', bookId, 'to user index as', sharedBookId);
     promises.push(
       rtdb.ref('users/' + user.uid + '/books/' + sharedBookId).set({...(val.data || {}), checks: {}})
         .then(() => rtdb.ref('users/' + user.uid + '/index/' + sharedBookId).set({
@@ -2678,6 +2687,8 @@ async function resolvePendingShares(user) {
           updates['members/' + user.uid] = true;
           return rtdb.ref('shared/' + bookId).update(updates);
         })
+        .then(() => console.log('[share] ✓ book', sharedBookId, 'copied successfully'))
+        .catch(e => console.error('[share] ✗ copy failed for', bookId, e))
     );
   });
   await Promise.all(promises);
