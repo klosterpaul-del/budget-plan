@@ -1254,9 +1254,11 @@ function saveData() {
 }
 
 function resetData() {
-  if (!confirm('Alle Änderungen zurücksetzen?')) return;
+  if (!confirm('Alle eingetragenen Beträge auf 0 setzen?\n\nKategorien und Struktur bleiben erhalten.\nDiese Aktion kann nicht rückgängig gemacht werden.')) return;
   if (!currentBookId || !currentUser) return;
-  appData = JSON.parse(JSON.stringify(SCHEMA));
+  appData.forEach(sec => sec.groups.forEach(grp => grp.items.forEach(it => {
+    it.v = new Array(12).fill(0);
+  })));
   _bookRef(currentBookId).child('data').set(appData);
   renderTable();
 }
