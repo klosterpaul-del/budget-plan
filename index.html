@@ -2685,7 +2685,10 @@ async function resolvePendingShares(user) {
           const updates = {};
           if (hasPending) updates['pendingMembers/' + encodedEmail] = null;
           updates['members/' + user.uid] = true;
-          return rtdb.ref('shared/' + bookId).update(updates);
+          return Promise.all([
+            rtdb.ref('shared/' + bookId).update(updates),
+            rtdb.ref('users/' + user.uid + '/sharedBooks/' + bookId).set(true)
+          ]);
         })
         .then(() => console.log('[share] ✓ book', sharedBookId, 'copied successfully'))
         .catch(e => console.error('[share] ✗ copy failed for', bookId, e))
@@ -2772,6 +2775,32 @@ auth.onAuthStateChanged(async user => {
         return;
       }
 
+      // Load shared-book totals from /shared/{bookId}/data for sharedBy entries
+      const sharedEntries = entries.filter(e => e.sharedBy);
+      sharedEntries.forEach(async entry => {
+        const origId = entry.id.replace(/^shared_/, '');
+        try {
+          const ssnap = await rtdb.ref('shared/' + origId + '/data').once('value');
+          const sdata = ssnap.val();
+          if (!sdata) return;
+          const secs = Array.isArray(sdata) ? sdata : (sdata.data ? (Array.isArray(sdata.data) ? sdata.data : Object.values(sdata.data)) : Object.values(sdata));
+          const sumSec = sid => {
+            const sec = secs.find && secs.find(x => x && x.id === sid);
+            if (!sec) return 0;
+            const gs = Array.isArray(sec.groups) ? sec.groups : Object.values(sec.groups || {});
+            return gs.reduce((a,g) => {
+              const its = Array.isArray(g.items) ? g.items : Object.values(g.items || {});
+              return a + its.reduce((b,it) => {
+                const vs = Array.isArray(it.v) ? it.v : Object.values(it.v || {});
+                return b + vs.reduce((c,v) => c+(v||0), 0);
+              }, 0);
+            }, 0);
+          };
+          const cached = _booksCache.find(b => b.id === entry.id);
+          if (cached) { cached.totals = {ein: sumSec('ein'), aus: sumSec('aus')}; renderHome(); }
+        } catch(e) { console.warn('[share] totals load failed for', entry.id, e); }
+      });
+
       // Load totals in background, re-render when done
       Promise.all(entries.map(async entry => {
         try {
@@ -2796,9 +2825,41 @@ auth.onAuthStateChanged(async user => {
         } catch(e) { console.warn('Totals load failed for', entry.id, e); }
       })).then(() => renderHome()).catch(console.warn);
     });
+    // Listen to sharedBooks references — ensures shared books always appear in index
+    rtdb.ref('users/' + user.uid + '/sharedBooks').on('value', async snap => {
+      const refs = snap.val() || {};
+      const bookIds = Object.keys(refs);
+      if (bookIds.length === 0) return;
+      await Promise.all(bookIds.map(async bookId => {
+        const sharedBookId = 'shared_' + bookId;
+        try {
+          const [sharedSnap, indexSnap] = await Promise.all([
+            rtdb.ref('shared/' + bookId).once('value'),
+            _indexRef().child(sharedBookId).once('value')
+          ]);
+          if (!sharedSnap.exists()) return;
+          const val = sharedSnap.val();
+          if (!indexSnap.exists()) {
+            console.log('[sharedBooks listener] restoring', sharedBookId, 'to index');
+            await rtdb.ref('users/' + user.uid + '/books/' + sharedBookId).set({...(val.data || {}), checks: {}});
+            await _indexRef().child(sharedBookId).set({
+              id: sharedBookId,
+              name: val.bookName || 'Geteiltes Buch',
+              lastEdited: new Date().toISOString(),
+              sharedBy: val.owner || ''
+            });
+            // index write triggers _indexRef().on('value') → _booksCache → renderHome()
+          }
+        } catch(e) { console.warn('[sharedBooks listener] error for', bookId, e); }
+      }));
+    });
+
   } else {
     // Stop index listener before clearing currentUser
-    if (currentUser) { try { _indexRef().off(); } catch(e){} }
+    if (currentUser) {
+      try { _indexRef().off(); } catch(e){}
+      try { rtdb.ref('users/' + currentUser.uid + '/sharedBooks').off(); } catch(e){}
+    }
     currentUser = null;
     // Show login screen
     document.getElementById('login-screen').classList.remove('hidden');
