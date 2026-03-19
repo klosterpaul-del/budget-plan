@@ -1208,6 +1208,11 @@ function _bookRef(id)     { return rtdb.ref('users/' + currentUser.uid + '/books
 function _indexRef()      { return rtdb.ref('users/' + currentUser.uid + '/index'); }
 function _sharedRef(id)   { return rtdb.ref('shared/' + id); }
 function _emailToUid(em)  { return rtdb.ref('emailToUid/' + em.replace(/\./g,'_')); }
+// For shared books, live data lives in /shared/{origId}/data — same structure as users/.../books/{id}
+function _activeBookDataRef(id) {
+  if (id && id.startsWith('shared_')) return rtdb.ref('shared/' + id.replace(/^shared_/, '') + '/data');
+  return _bookRef(id);
+}
 
 const DATA_VER = 3;
 let currentBookId = null;
@@ -1246,8 +1251,14 @@ function saveData() {
   saveTimer = setTimeout(async () => {
     if (!currentBookId || !currentUser) return;
     try {
-      await _bookRef(currentBookId).child('data').set(appData);
-      await _indexRef().child(currentBookId).child('lastEdited').set(new Date().toISOString());
+      if (currentBookId.startsWith('shared_')) {
+        // Shared book: write to /shared/{origId}/data/data so all members see it
+        const origId = currentBookId.replace(/^shared_/, '');
+        await rtdb.ref('shared/' + origId + '/data/data').set(appData);
+      } else {
+        await _bookRef(currentBookId).child('data').set(appData);
+        await _indexRef().child(currentBookId).child('lastEdited').set(new Date().toISOString());
+      }
       showToast();
     } catch(e) { console.error('saveData error', e); }
   }, 400);
@@ -1737,7 +1748,7 @@ function panelSave() {
 function showAppView(bookId) {
   // Detach any previous listener
   if (_bookDataListener) {
-    rtdb.ref('users/' + currentUser.uid + '/books/' + currentBookId).off('value', _bookDataListener);
+    _activeBookDataRef(currentBookId).off('value', _bookDataListener);
     _bookDataListener = null;
   }
   currentBookId = bookId;
@@ -1749,8 +1760,14 @@ function showAppView(bookId) {
   document.getElementById('view-home').classList.add('hidden');
   document.getElementById('view-app').classList.remove('hidden');
 
-  // Real-time listener for book data + checks
-  _bookDataListener = _bookRef(bookId).on('value', snap => {
+  // For shared books: load per-user checks from own copy (not from /shared)
+  const isShared = bookId.startsWith('shared_');
+  if (isShared) {
+    _bookRef(bookId).child('checks').once('value').then(cs => { checkState = cs.val() || {}; });
+  }
+
+  // Real-time listener: shared → /shared/{origId}/data, own → users/.../books/{id}
+  _bookDataListener = _activeBookDataRef(bookId).on('value', snap => {
     const val = snap.val();
     if (val && val.data) {
       // Firebase may return objects instead of arrays — normalise to arrays
@@ -1779,10 +1796,10 @@ function showAppView(bookId) {
           })
         }))
       }));
-      checkState = val.checks || {};
+      if (!isShared) checkState = val.checks || {};  // own books only — shared keeps per-user checks
     } else {
-      appData    = JSON.parse(JSON.stringify(SCHEMA));
-      checkState = {};
+      appData = JSON.parse(JSON.stringify(SCHEMA));
+      if (!isShared) checkState = {};
     }
     renderTable();
     setupDragDrop();
@@ -1792,7 +1809,7 @@ function showAppView(bookId) {
 function backToHome() {
   // Detach real-time listener
   if (_bookDataListener && currentBookId && currentUser) {
-    rtdb.ref('users/' + currentUser.uid + '/books/' + currentBookId).off('value', _bookDataListener);
+    _activeBookDataRef(currentBookId).off('value', _bookDataListener);
     _bookDataListener = null;
   }
   document.getElementById('view-home').classList.remove('hidden');
@@ -2576,7 +2593,7 @@ async function doLogin() {
 
 async function doLogout() {
   if (_bookDataListener && currentBookId) {
-    rtdb.ref('users/' + currentUser.uid + '/books/' + currentBookId).off('value', _bookDataListener);
+    _activeBookDataRef(currentBookId).off('value', _bookDataListener);
     _bookDataListener = null;
   }
   await auth.signOut();
