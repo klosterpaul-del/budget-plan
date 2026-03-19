@@ -2648,25 +2648,37 @@ async function doShare() {
 
 async function resolvePendingShares(user) {
   const encodedEmail = user.email.toLowerCase().replace(/\./g, '_');
-  const sharedSnap = await rtdb.ref('shared').once('value');
+  const [sharedSnap, indexSnap] = await Promise.all([
+    rtdb.ref('shared').once('value'),
+    _indexRef().once('value')
+  ]);
   if (!sharedSnap.exists()) return;
+  const existingIndex = indexSnap.val() || {};
   const promises = [];
   sharedSnap.forEach(child => {
     const bookId = child.key;
     const val = child.val();
-    if (val.pendingMembers && val.pendingMembers[encodedEmail]) {
-      const sharedBookId = 'shared_' + bookId;
-      promises.push(
-        rtdb.ref('users/' + user.uid + '/books/' + sharedBookId).set({...(val.data || {}), checks: {}})
-          .then(() => rtdb.ref('users/' + user.uid + '/index/' + sharedBookId).set({
-            id: sharedBookId,
-            name: val.bookName || 'Geteiltes Buch',
-            lastEdited: new Date().toISOString(),
-            sharedBy: val.owner || ''
-          }))
-          .then(() => rtdb.ref('shared/' + bookId + '/pendingMembers/' + encodedEmail).remove())
-      );
-    }
+    const sharedBookId = 'shared_' + bookId;
+    const hasPending = val.pendingMembers && val.pendingMembers[encodedEmail];
+    const isMember   = val.members && val.members[user.uid];
+    const inIndex    = !!existingIndex[sharedBookId];
+    if (!hasPending && !isMember) return;      // not invited
+    if (isMember && inIndex) return;           // already set up, nothing to do
+    promises.push(
+      rtdb.ref('users/' + user.uid + '/books/' + sharedBookId).set({...(val.data || {}), checks: {}})
+        .then(() => rtdb.ref('users/' + user.uid + '/index/' + sharedBookId).set({
+          id: sharedBookId,
+          name: val.bookName || 'Geteiltes Buch',
+          lastEdited: new Date().toISOString(),
+          sharedBy: val.owner || ''
+        }))
+        .then(() => {
+          const updates = {};
+          if (hasPending) updates['pendingMembers/' + encodedEmail] = null;
+          updates['members/' + user.uid] = true;
+          return rtdb.ref('shared/' + bookId).update(updates);
+        })
+    );
   });
   await Promise.all(promises);
 }
