@@ -2617,37 +2617,56 @@ async function doShare() {
   const errEl  = document.getElementById('share-error');
   errEl.classList.add('hidden');
   if (!email || !_shareBookId) return;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = 'Bitte eine gültige E-Mail-Adresse eingeben.';
+    errEl.classList.remove('hidden'); return;
+  }
+  if (email === currentUser.email.toLowerCase()) {
+    errEl.textContent = 'Das ist deine eigene E-Mail-Adresse.';
+    errEl.classList.remove('hidden'); return;
+  }
 
   try {
-    // Look up uid for target email
-    const snap = await _emailToUid(email).once('value');
-    if (!snap.exists()) {
-      errEl.textContent = 'Kein Konto für diese E-Mail gefunden.';
-      errEl.classList.remove('hidden'); return;
-    }
-    const targetUid = snap.val();
-    if (targetUid === currentUser.uid) {
-      errEl.textContent = 'Das ist deine eigene E-Mail-Adresse.';
-      errEl.classList.remove('hidden'); return;
-    }
-
-    // Copy book data to target user
-    const snap2 = await _bookRef(_shareBookId).once('value');
-    const bookData = snap2.val();
+    const snap = await _bookRef(_shareBookId).once('value');
+    const bookData = snap.val();
     const entry = _booksCache.find(b => b.id === _shareBookId);
-    const sharedBookId = 'shared_' + _shareBookId;
-    await rtdb.ref('users/' + targetUid + '/books/' + sharedBookId).set({...bookData, checks: {}});
-    await rtdb.ref('users/' + targetUid + '/index/' + sharedBookId).set({
-      id: sharedBookId, name: entry ? entry.name : 'Geteiltes Buch',
-      lastEdited: new Date().toISOString(),
-      sharedBy: currentUser.email
-    });
+    const encodedEmail = email.replace(/\./g, '_');
+    const sharedRef = _sharedRef(_shareBookId);
+    await sharedRef.child('data').set(bookData);
+    await sharedRef.child('owner').set(currentUser.email);
+    await sharedRef.child('bookName').set(entry ? entry.name : 'Geteiltes Buch');
+    await sharedRef.child('pendingMembers/' + encodedEmail).set(true);
     closeShareModal();
-    showToast('Geteilt ✓');
+    showToast('Einladung gesendet ✓');
   } catch(e) {
     errEl.textContent = 'Fehler beim Teilen: ' + e.message;
     errEl.classList.remove('hidden');
   }
+}
+
+async function resolvePendingShares(user) {
+  const encodedEmail = user.email.toLowerCase().replace(/\./g, '_');
+  const sharedSnap = await rtdb.ref('shared').once('value');
+  if (!sharedSnap.exists()) return;
+  const promises = [];
+  sharedSnap.forEach(child => {
+    const bookId = child.key;
+    const val = child.val();
+    if (val.pendingMembers && val.pendingMembers[encodedEmail]) {
+      const sharedBookId = 'shared_' + bookId;
+      promises.push(
+        rtdb.ref('users/' + user.uid + '/books/' + sharedBookId).set({...(val.data || {}), checks: {}})
+          .then(() => rtdb.ref('users/' + user.uid + '/index/' + sharedBookId).set({
+            id: sharedBookId,
+            name: val.bookName || 'Geteiltes Buch',
+            lastEdited: new Date().toISOString(),
+            sharedBy: val.owner || ''
+          }))
+          .then(() => rtdb.ref('shared/' + bookId + '/pendingMembers/' + encodedEmail).remove())
+      );
+    }
+  });
+  await Promise.all(promises);
 }
 
 // ═══════════════════════════════════════
@@ -2670,6 +2689,8 @@ auth.onAuthStateChanged(async user => {
       return;
     }
     currentUser = user;
+    // Resolve any pending share invitations for this email
+    resolvePendingShares(user).catch(e => console.warn('resolvePendingShares:', e));
     // Show app, hide login
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('auth-email').textContent = user.email;
