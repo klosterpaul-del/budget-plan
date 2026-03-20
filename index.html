@@ -1879,13 +1879,8 @@ function handleCardClick(e, bookId) {
   if (e.target.closest('.book-card-actions') || e.target.closest('[contenteditable]')) return;
   const name = document.getElementById('bcname-' + bookId);
   if (name && name.contentEditable === 'true') return;
-  // Fast path: sharedBy in cache or shared_ prefix (legacy)
-  const cached = _booksCache.find(b => b.id === bookId);
-  if ((cached && cached.sharedBy) || bookId.startsWith('shared_')) {
-    showAppView(bookId, true); return;
-  }
-  // Slow path: check Firebase sharedBooks for books not yet marked in cache
-  rtdb.ref('users/' + currentUser.uid + '/sharedBooks/' + bookId).once('value')
+  // Check /shared/{bookId} — covers both owner and invited users
+  rtdb.ref('shared/' + bookId).once('value')
     .then(snap => showAppView(bookId, snap.exists()))
     .catch(() => showAppView(bookId, false));
 }
