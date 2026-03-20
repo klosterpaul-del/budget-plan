@@ -2825,34 +2825,35 @@ auth.onAuthStateChanged(async user => {
         return;
       }
 
-      // Load shared-book totals from /shared/{bookId}/data for sharedBy entries
-      const sharedEntries = entries.filter(e => e.sharedBy);
+      // Load shared-book totals directly from /shared/{bookId}/data/data (always current)
+      const sharedEntries = _booksCache.filter(e => e.sharedBy);
       sharedEntries.forEach(async entry => {
         const origId = entry.id.replace(/^shared_/, '');
         try {
-          const ssnap = await rtdb.ref('shared/' + origId + '/data').once('value');
-          const sdata = ssnap.val();
-          if (!sdata) return;
-          const secs = Array.isArray(sdata) ? sdata : (sdata.data ? (Array.isArray(sdata.data) ? sdata.data : Object.values(sdata.data)) : Object.values(sdata));
-          const sumSec = sid => {
-            const sec = secs.find && secs.find(x => x && x.id === sid);
-            if (!sec) return 0;
+          const ssnap = await rtdb.ref('shared/' + origId + '/data/data').once('value');
+          const sections = ssnap.val();
+          if (!Array.isArray(sections)) return;
+          let ein = 0, aus = 0;
+          sections.forEach(sec => {
+            if (!sec) return;
             const gs = Array.isArray(sec.groups) ? sec.groups : Object.values(sec.groups || {});
-            return gs.reduce((a,g) => {
+            const secTotal = gs.reduce((a, g) => {
               const its = Array.isArray(g.items) ? g.items : Object.values(g.items || {});
-              return a + its.reduce((b,it) => {
+              return a + its.reduce((b, it) => {
                 const vs = Array.isArray(it.v) ? it.v : Object.values(it.v || {});
-                return b + vs.reduce((c,v) => c+(v||0), 0);
+                return b + vs.reduce((c, v) => c + (v || 0), 0);
               }, 0);
             }, 0);
-          };
+            if (sec.id === 'ein') ein += secTotal;
+            else aus += secTotal;
+          });
           const cached = _booksCache.find(b => b.id === entry.id);
-          if (cached) { cached.totals = {ein: sumSec('ein'), aus: sumSec('aus')}; renderHome(); }
+          if (cached) { cached.totals = {ein, aus}; renderHome(); }
         } catch(e) { console.warn('[share] totals load failed for', entry.id, e); }
       });
 
-      // Load totals in background, re-render when done
-      Promise.all(entries.map(async entry => {
+      // Load totals in background, re-render when done (skip shared entries — loaded above)
+      Promise.all(entries.filter(e => !e.sharedBy).map(async entry => {
         try {
           const bsnap = await _bookRef(entry.id).child('data').once('value');
           const data = bsnap.val();
