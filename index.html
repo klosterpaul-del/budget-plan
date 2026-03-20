@@ -2831,11 +2831,13 @@ auth.onAuthStateChanged(async user => {
         const origId = entry.id.replace(/^shared_/, '');
         try {
           const ssnap = await rtdb.ref('shared/' + origId + '/data/data').once('value');
-          const sections = ssnap.val();
-          if (!Array.isArray(sections)) return;
+          const raw = ssnap.val();
+          if (!raw) return;
+          // Firebase may return array or object with numeric keys
+          const sections = Array.isArray(raw) ? raw : Object.values(raw);
           let ein = 0, aus = 0;
           sections.forEach(sec => {
-            if (!sec) return;
+            if (!sec || !sec.id) return;
             const gs = Array.isArray(sec.groups) ? sec.groups : Object.values(sec.groups || {});
             const secTotal = gs.reduce((a, g) => {
               const its = Array.isArray(g.items) ? g.items : Object.values(g.items || {});
@@ -2845,7 +2847,8 @@ auth.onAuthStateChanged(async user => {
               }, 0);
             }, 0);
             if (sec.id === 'ein') ein += secTotal;
-            else aus += secTotal;
+            else if (sec.id === 'aus') aus += secTotal;
+            // bud and spa sections are intentionally excluded from card totals
           });
           const cached = _booksCache.find(b => b.id === entry.id);
           if (cached) { cached.totals = {ein, aus}; renderHome(); }
