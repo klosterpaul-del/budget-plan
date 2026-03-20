@@ -2855,27 +2855,59 @@ auth.onAuthStateChanged(async user => {
         } catch(e) { console.warn('[share] totals load failed for', entry.id, e); }
       });
 
-      // Load totals in background, re-render when done (skip shared entries — loaded above)
+      // Load totals in background, re-render when done (skip invited-shared entries — loaded above)
       Promise.all(entries.filter(e => !e.sharedBy).map(async entry => {
         try {
-          const bsnap = await _bookRef(entry.id).child('data').once('value');
-          const data = bsnap.val();
-          if (!data) return;
-          const secs = Array.isArray(data) ? data : Object.values(data);
-          const sumSec = sid => {
-            const sec = secs.find(x => x.id === sid);
-            if (!sec) return 0;
-            const gs = Array.isArray(sec.groups) ? sec.groups : Object.values(sec.groups || {});
-            return gs.reduce((a,g) => {
-              const its = Array.isArray(g.items) ? g.items : Object.values(g.items || {});
-              return a + its.reduce((b,it) => {
-                const vs = Array.isArray(it.v) ? it.v : Object.values(it.v || {});
-                return b + vs.reduce((c,v) => c + (v||0), 0);
-              }, 0);
-            }, 0);
-          };
+          // Check if this is the owner's own shared book (no sharedBy in index, but exists in /shared/)
+          const sharedSnap = await rtdb.ref('shared/' + entry.id).once('value');
           const cached = _booksCache.find(b => b.id === entry.id);
-          if (cached) cached.totals = {ein: sumSec('ein'), aus: sumSec('aus')};
+          if (!cached) return;
+
+          if (sharedSnap.exists()) {
+            // Owner's shared book — show badge and load live totals from /shared/
+            if (!cached.sharedBy) {
+              cached.sharedBy = sharedSnap.val().owner || 'Geteilt';
+              renderHome(); // update badge immediately
+            }
+            const ssnap = await rtdb.ref('shared/' + entry.id + '/data/data').once('value');
+            const raw = ssnap.val();
+            if (!raw) return;
+            const sections = Array.isArray(raw) ? raw : Object.values(raw);
+            let ein = 0, aus = 0;
+            sections.forEach(sec => {
+              if (!sec || !sec.id) return;
+              const gs = Array.isArray(sec.groups) ? sec.groups : Object.values(sec.groups || {});
+              const secTotal = gs.reduce((a, g) => {
+                const its = Array.isArray(g.items) ? g.items : Object.values(g.items || {});
+                return a + its.reduce((b, it) => {
+                  const vs = Array.isArray(it.v) ? it.v : Object.values(it.v || {});
+                  return b + vs.reduce((c, v) => c + (v || 0), 0);
+                }, 0);
+              }, 0);
+              if (sec.id === 'ein') ein += secTotal;
+              else if (sec.id === 'aus') aus += secTotal;
+            });
+            cached.totals = {ein, aus};
+          } else {
+            // Truly own (non-shared) book — load from local path
+            const bsnap = await _bookRef(entry.id).child('data').once('value');
+            const data = bsnap.val();
+            if (!data) return;
+            const secs = Array.isArray(data) ? data : Object.values(data);
+            const sumSec = sid => {
+              const sec = secs.find(x => x.id === sid);
+              if (!sec) return 0;
+              const gs = Array.isArray(sec.groups) ? sec.groups : Object.values(sec.groups || {});
+              return gs.reduce((a,g) => {
+                const its = Array.isArray(g.items) ? g.items : Object.values(g.items || {});
+                return a + its.reduce((b,it) => {
+                  const vs = Array.isArray(it.v) ? it.v : Object.values(it.v || {});
+                  return b + vs.reduce((c,v) => c + (v||0), 0);
+                }, 0);
+              }, 0);
+            };
+            cached.totals = {ein: sumSec('ein'), aus: sumSec('aus')};
+          }
         } catch(e) { console.warn('Totals load failed for', entry.id, e); }
       })).then(() => renderHome()).catch(console.warn);
     });
